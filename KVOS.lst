@@ -1,6 +1,6 @@
 ; da65 V2.15
-; Created:    2016-08-07 14:08:24
-; Input file: /Users/option8/Dropbox/Projects/retro connector/GITHUB/BDC-6500/0000-0FFF-combined.rom
+; Created:    2016-08-09 09:24:38
+; Input file: /Users/option8/Dropbox/Projects/retro connector/GITHUB/BDC-6500/F000-FFFF-combined.rom
 ; Page:       1
 
 
@@ -19,9 +19,9 @@ L160E           := $160E
 L1612           := $1612
 L1C22           := $1C22
 L4CFD           := $4CFD
-Zeroes          := $FDE2
+ZEROES          := $FDE2
 ; ----------------------------------------------------------------------------
-Character ROM:
+CHARACTER ROM:
         .dbyt   $0000,$0000,$0004,$2000; F000 00 00 00 00 00 04 20 00           ...... .
         .dbyt   $2404,$0040,$8040,$8A0A; F008 24 04 00 40 80 40 8A 0A           $..@.@..
         .dbyt   $4A9F,$4A9F,$047E,$C52E; F010 4A 9F 4A 9F 04 7E C5 2E           J.J..~..
@@ -411,8 +411,7 @@ LF407:  lda     $BF5B          ; F407 AD 5B BF                                  
 ; ----------------------------------------------------------------------------
 LF40D:  lda     #$40           ; F40D A9 40                                     .@
 LF40F:  sta     $FA            ; F40F 85 FA                                     ..
-        and     ($EB,x)        ; F411 21 EB                                     !.
-        sed                    ; F413 F8                                        .
+        jsr     LF8EB          ; F411 20 EB F8                                   ..
         jsr     LF88A          ; F414 20 8A F8                                   ..
         ldx     #$04           ; F417 A2 04                                     ..
 ; JSR $F887
@@ -504,7 +503,7 @@ LF4A0:  bmi     LF4B7          ; F4A0 30 15                                     
         pha                    ; F4AB 48                                        H
         bit     $163C          ; F4AC 2C 3C 16                                  ,<.
         bmi     LF4B6          ; F4AF 30 05                                     0.
-        lda     #$1A           ; F4B1 A9 1A                                     ..
+        lda     #$0A           ; F4B1 A9 0A                                     ..
         jsr     LF6AE          ; F4B3 20 AE F6                                   ..
 LF4B6:  pla                    ; F4B6 68                                        h
 LF4B7:  cmp     #$0C           ; F4B7 C9 0C                                     ..
@@ -538,12 +537,11 @@ LF4D2:  jsr     LF468          ; F4D2 20 68 F4                                  
 LF4E0:  cmp     #$18           ; F4E0 C9 18                                     ..
         beq     LF4D0          ; F4E2 F0 EC                                     ..
         cmp     #$0D           ; F4E4 C9 0D                                     ..
-        beq     LF4F1          ; F4E6 F0 09                                     ..
+        beq     LF4F0          ; F4E6 F0 08                                     ..
         sta     $C8E7,y        ; F4E8 99 E7 C8                                  ...
         cpy     $1629          ; F4EB CC 29 16                                  .).
         bne     LF4D2          ; F4EE D0 E2                                     ..
-        .byte   $A9            ; F4F0 A9                                        .
-LF4F1:  brk                    ; F4F1 00                                        .
+LF4F0:  lda     #$00           ; F4F0 A9 00                                     ..
         sta     ($E7),y        ; F4F2 91 E7                                     ..
         ldy     #$00           ; F4F4 A0 00                                     ..
         rts                    ; F4F6 60                                        `
@@ -878,6 +876,7 @@ LF737:  dey                    ; F737 88                                        
         rts                    ; F738 60                                        `
 
 ; ----------------------------------------------------------------------------
+; BIT MASK TABLE
 MASK?:  .dbyt   $0381,$C0E0,$F0F8,$FCFE; F739 03 81 C0 E0 F0 F8 FC FE           ........
         .dbyt   $FFFF,$FF7F,$3F1F,$0F07; F741 FF FF FF 7F 3F 1F 0F 07           ....?...
 ; ----------------------------------------------------------------------------
@@ -1798,7 +1797,7 @@ LFD4C:  bit     $0F            ; FD4C 24 0F                                     
         jsr     LFDB9          ; FD56 20 B9 FD                                   ..
         bcs     LFD9A          ; FD59 B0 3F                                     .?
         dec     $0D            ; FD5B C6 0D                                     ..
-        jmp     LFD9B          ; FD5D 4C 9B FD                                  L..
+        jmp     LFD9A          ; FD5D 4C 9A FD                                  L..
 
 ; ----------------------------------------------------------------------------
 LFD60:  lda     $06            ; FD60 A5 06                                     ..

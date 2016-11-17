@@ -1,6 +1,6 @@
 ; da65 V2.15
-; Created:    2016-08-09 09:24:38
-; Input file: /Users/option8/Dropbox/Projects/retro connector/GITHUB/BDC-6500/F000-FFFF-combined.rom
+; Created:    2016-11-15 19:47:18
+; Input file: F000-FFFF-combined-modified.rom
 ; Page:       1
 
 
@@ -8,17 +8,33 @@
 
 ; ----------------------------------------------------------------------------
 L0004           := $0004
-L00E9           := $00E9
-L0810           := $0810
-L1600           := $1600
+T2LB            := $00E7       ; 5D
+T2HB            := $00E8       ; BF
+T3LB            := $00E9       ; A7
+T3HB            := $00EA       ; BF
+SCRNLO          := $00FB       ; SCREEN POSITION LOW BYTE
+SCRNHI          := $00FC       ; SCREEN POSITION HIGH BYTE
+6522IO          := $1580       ; 6522 VIA I/O registers
+JUMP TABLE      := $1600       ; JUMP TABLE
 L1602           := $1602
 L1604           := $1604
 L1608           := $1608
 L160C           := $160C
 L160E           := $160E
 L1612           := $1612
-L1C22           := $1C22
+6530IO          := $1700       ; IO & Timer for 6530-003
+6530PADD        := $1701       ; 6530-003 A Data Direction Register
+6530PBD         := $1702       ; 6530-003 B Data Register
+6530PBDD        := $1703       ; 6530-003 B Data Direction Register
+6530APIO        := $1733       ; 6530-003 Application IO
+6530APIO2       := $1734       ; 6530-003 Application IO
+NMI             := $1C1C
+IRQ             := $1C1F
+KIMRST          := $1C22       ; KIM ENTRY VIA RST, 6530-002
 L4CFD           := $4CFD
+TBL1            := $BF51       ; DATA TABLE 1, SET AT F1EF
+TBL2            := $BF5D       ; SET AT F2E1
+TBL3            := $BFA7       ; SET AT F2EC
 ZEROES          := $FDE2
 ; ----------------------------------------------------------------------------
 CHARACTER ROM:
@@ -82,21 +98,22 @@ CHARACTER ROM:
         .dbyt   $0484,$18C4,$0424,$0420; F1C8 04 84 18 C4 04 24 04 20           .....$. 
         .dbyt   $0418,$2404,$C304,$0000; F1D0 04 18 24 04 C3 04 00 00           ..$.....
         .dbyt   $0215,$0815,$4A95,$AA55; F1D8 02 15 08 15 4A 95 AA 55           ....J..U
-        .dbyt   $A200          ; F1E0 A2 00                                     ..
 ; ----------------------------------------------------------------------------
+; SETS UP DATA TABLE 1 AT BF51
+T1:     ldx     #$00           ; F1E0 A2 00                                     ..
 LF1E2:  jsr     LF3A8          ; F1E2 20 A8 F3                                   ..
         beq     LF1F8          ; F1E5 F0 11                                     ..
         cmp     #$20           ; F1E7 C9 20                                     . 
         beq     LF1F8          ; F1E9 F0 0D                                     ..
         cmp     #$3D           ; F1EB C9 3D                                     .=
         beq     LF1F8          ; F1ED F0 09                                     ..
-        sta     $BF51,x        ; F1EF 9D 51 BF                                  .Q.
+        sta     TBL1,x         ; F1EF 9D 51 BF                                  .Q.
         inx                    ; F1F2 E8                                        .
         iny                    ; F1F3 C8                                        .
         cpx     #$08           ; F1F4 E0 08                                     ..
         bne     LF1E2          ; F1F6 D0 EA                                     ..
 LF1F8:  lda     #$00           ; F1F8 A9 00                                     ..
-        sta     $BF51,x        ; F1FA 9D 51 BF                                  .Q.
+        sta     TBL1,x         ; F1FA 9D 51 BF                                  .Q.
         jsr     LF39D          ; F1FD 20 9D F3                                   ..
         rts                    ; F200 60                                        `
 
@@ -141,7 +158,7 @@ LF223:  iny                    ; F223 C8                                        
 LF23E:  jmp     LF2A5          ; F23E 4C A5 F2                                  L..
 
 ; ----------------------------------------------------------------------------
-LF241:  lda     ($E7),y        ; F241 B1 E7                                     ..
+LF241:  lda     (T2LB),y       ; F241 B1 E7                                     ..
         cmp     #$3D           ; F243 C9 3D                                     .=
         beq     LF25D          ; F245 F0 16                                     ..
         jsr     LFAEE          ; F247 20 EE FA                                   ..
@@ -166,7 +183,7 @@ LF25E:  jsr     LF39D          ; F25E 20 9D F3                                  
         cmp     $1624          ; F26A CD 24 16                                  .$.
         bne     LF253          ; F26D D0 E4                                     ..
 LF26F:  iny                    ; F26F C8                                        .
-        lda     ($E7),y        ; F270 B1 E7                                     ..
+        lda     (T2LB),y       ; F270 B1 E7                                     ..
         beq     LF2A4          ; F272 F0 30                                     .0
         cmp     $1624          ; F274 CD 24 16                                  .$.
         beq     LF25D          ; F277 F0 E4                                     ..
@@ -200,7 +217,8 @@ LF2A4:  rts                    ; F2A4 60                                        
 LF2A5:  jsr     LF6A5          ; F2A5 20 A5 F6                                   ..
 LF2A8:  jsr     LFC5F          ; F2A8 20 5F FC                                   _.
         bcc     LF2CE          ; F2AB 90 21                                     .!
-LF2AD:  jsr     LF2EC          ; F2AD 20 EC F2                                   ..
+; JSR to T3 to set data table 3
+T3SET:  jsr     T3             ; F2AD 20 EC F2                                   ..
         ldx     #$DD           ; F2B0 A2 DD                                     ..
         jsr     LF3E1          ; F2B2 20 E1 F3                                   ..
         ldx     #$10           ; F2B5 A2 10                                     ..
@@ -224,30 +242,32 @@ LF2D5:  dex                    ; F2D5 CA                                        
         bne     LF2B7          ; F2D6 D0 DF                                     ..
         jsr     LF2FC          ; F2D8 20 FC F2                                   ..
         jsr     LF6A5          ; F2DB 20 A5 F6                                   ..
-        jmp     LF2AD          ; F2DE 4C AD F2                                  L..
+        jmp     T3SET          ; F2DE 4C AD F2                                  L..
 
 ; ----------------------------------------------------------------------------
-        lda     #$5D           ; F2E1 A9 5D                                     .]
-        sta     $E7            ; F2E3 85 E7                                     ..
+; SET DATA TABLE 2 TO $BF5D
+T2:     lda     #$5D           ; F2E1 A9 5D                                     .]
+        sta     T2LB           ; F2E3 85 E7                                     ..
         lda     #$BF           ; F2E5 A9 BF                                     ..
-        sta     $E8            ; F2E7 85 E8                                     ..
+        sta     T2HB           ; F2E7 85 E8                                     ..
         ldy     #$00           ; F2E9 A0 00                                     ..
         rts                    ; F2EB 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF2EC:  lda     #$A7           ; F2EC A9 A7                                     ..
-        sta     L00E9          ; F2EE 85 E9                                     ..
+; SET DATA TABLE 3 TO $BFA7
+T3:     lda     #$A7           ; F2EC A9 A7                                     ..
+        sta     T3LB           ; F2EE 85 E9                                     ..
         lda     #$BF           ; F2F0 A9 BF                                     ..
-        sta     $EA            ; F2F2 85 EA                                     ..
+        sta     T3HB           ; F2F2 85 EA                                     ..
         ldy     #$00           ; F2F4 A0 00                                     ..
         rts                    ; F2F6 60                                        `
 
 ; ----------------------------------------------------------------------------
 LF2F7:  lda     #$20           ; F2F7 A9 20                                     . 
-        sta     (L00E9),y      ; F2F9 91 E9                                     ..
+        sta     (T3LB),y       ; F2F9 91 E9                                     ..
         iny                    ; F2FB C8                                        .
 LF2FC:  lda     #$00           ; F2FC A9 00                                     ..
-        sta     (L00E9),y      ; F2FE 91 E9                                     ..
+        sta     (T3LB),y       ; F2FE 91 E9                                     ..
         jsr     LF51D          ; F300 20 1D F5                                   ..
         ldy     #$00           ; F303 A0 00                                     ..
         rts                    ; F305 60                                        `
@@ -257,7 +277,7 @@ LF306:  jsr     LF326          ; F306 20 26 F3                                  
         ldx     #$04           ; F309 A2 04                                     ..
 LF30B:  lda     LF321,x        ; F30B BD 21 F3                                  .!.
         jsr     LF6AC          ; F30E 20 AC F6                                   ..
-        jsr     LF2EC          ; F311 20 EC F2                                   ..
+        jsr     T3             ; F311 20 EC F2                                   ..
         lda     $1670,x        ; F314 BD 70 16                                  .p.
         jsr     LF3EA          ; F317 20 EA F3                                   ..
         jsr     LF2F7          ; F31A 20 F7 F2                                   ..
@@ -299,7 +319,7 @@ LF357:  jsr     LF3B8          ; F357 20 B8 F3                                  
         ora     $00,x          ; F35A 15 00                                     ..
         sta     $00,x          ; F35C 95 00                                     ..
         iny                    ; F35E C8                                        .
-        lda     ($E7),y        ; F35F B1 E7                                     ..
+        lda     (T2LB),y       ; F35F B1 E7                                     ..
         dec     $1644          ; F361 CE 44 16                                  .D.
         bmi     LF343          ; F364 30 DD                                     0.
 LF366:  rol     $1644          ; F366 2E 44 16                                  .D.
@@ -322,7 +342,7 @@ LF371:  sec                    ; F371 38                                        
         bcs     LF3C4          ; F387 B0 3B                                     .;
         dec     $1644          ; F389 CE 44 16                                  .D.
         iny                    ; F38C C8                                        .
-        lda     ($E7),y        ; F38D B1 E7                                     ..
+        lda     (T2LB),y       ; F38D B1 E7                                     ..
         jmp     LF371          ; F38F 4C 71 F3                                  Lq.
 
 ; ----------------------------------------------------------------------------
@@ -340,7 +360,7 @@ LF3A6:  rts                    ; F3A6 60                                        
 
 ; ----------------------------------------------------------------------------
         iny                    ; F3A7 C8                                        .
-LF3A8:  lda     ($E7),y        ; F3A8 B1 E7                                     ..
+LF3A8:  lda     (T2LB),y       ; F3A8 B1 E7                                     ..
         beq     LF3B7          ; F3AA F0 0B                                     ..
         bcs     LF3B3          ; F3AC B0 05                                     ..
         cmp     $161E          ; F3AE CD 1E 16                                  ...
@@ -397,7 +417,7 @@ LF3F3:  and     #$0F           ; F3F3 29 0F                                     
         cmp     #$3A           ; F3F8 C9 3A                                     .:
         bmi     LF3FE          ; F3FA 30 02                                     0.
         adc     #$06           ; F3FC 69 06                                     i.
-LF3FE:  sta     (L00E9),y      ; F3FE 91 E9                                     ..
+LF3FE:  sta     (T3LB),y       ; F3FE 91 E9                                     ..
         iny                    ; F400 C8                                        .
         rts                    ; F401 60                                        `
 
@@ -414,8 +434,7 @@ LF40F:  sta     $FA            ; F40F 85 FA                                     
         jsr     LF8EB          ; F411 20 EB F8                                   ..
         jsr     LF88A          ; F414 20 8A F8                                   ..
         ldx     #$04           ; F417 A2 04                                     ..
-; JSR $F887
-JSR1:   jsr     LF887          ; F419 20 87 F8                                   ..
+        jsr     LF887          ; F419 20 87 F8                                   ..
         dex                    ; F41C CA                                        .
 ; ???
 ???2:   .byte   $10            ; F41D 10                                        .
@@ -441,15 +460,15 @@ LF436:  bit     a:$FA          ; F436 2C FA 00                                  
 
 ; ----------------------------------------------------------------------------
         pha                    ; F43C 48                                        H
-        lda     $1701          ; F43D AD 01 17                                  ...
+        lda     6530PADD       ; F43D AD 01 17                                  ...
         and     #$80           ; F440 29 80                                     ).
-        sta     $1701          ; F442 8D 01 17                                  ...
-        lda     $1700          ; F445 AD 00 17                                  ...
+        sta     6530PADD       ; F442 8D 01 17                                  ...
+        lda     6530IO         ; F445 AD 00 17                                  ...
         ora     #$80           ; F448 09 80                                     ..
         cmp     #$83           ; F44A C9 83                                     ..
         bne     LF452          ; F44C D0 04                                     ..
         pla                    ; F44E 68                                        h
-        jmp     (L1600)        ; F44F 6C 00 16                                  l..
+        jmp     (JUMP TABLE)   ; F44F 6C 00 16                                  l..
 
 ; ----------------------------------------------------------------------------
 LF452:  cmp     #$84           ; F452 C9 84                                     ..
@@ -475,8 +494,7 @@ LF46D:  stx     $BF4B          ; F46D 8E 4B BF                                  
         sta     $BF4C          ; F470 8D 4C BF                                  .L.
         bit     $1640          ; F473 2C 40 16                                  ,@.
         bpl     LF47B          ; F476 10 03                                     ..
-        .byte   $7C            ; F478 7C                                        |
-        asl     $16            ; F479 06 16                                     ..
+        adc     $1601,x        ; F478 7D 01 16                                  }..
 LF47B:  jsr     LF402          ; F47B 20 02 F4                                   ..
         and     #$7F           ; F47E 29 7F                                     ).
         sta     $BF5B          ; F480 8D 5B BF                                  .[.
@@ -504,7 +522,7 @@ LF4A0:  bmi     LF4B7          ; F4A0 30 15                                     
         bit     $163C          ; F4AC 2C 3C 16                                  ,<.
         bmi     LF4B6          ; F4AF 30 05                                     0.
         lda     #$0A           ; F4B1 A9 0A                                     ..
-        jsr     LF6AE          ; F4B3 20 AE F6                                   ..
+        jsr     LF6AF          ; F4B3 20 AF F6                                   ..
 LF4B6:  pla                    ; F4B6 68                                        h
 LF4B7:  cmp     #$0C           ; F4B7 C9 0C                                     ..
         beq     LF47B          ; F4B9 F0 C0                                     ..
@@ -542,42 +560,42 @@ LF4E0:  cmp     #$18           ; F4E0 C9 18                                     
         cpy     $1629          ; F4EB CC 29 16                                  .).
         bne     LF4D2          ; F4EE D0 E2                                     ..
 LF4F0:  lda     #$00           ; F4F0 A9 00                                     ..
-        sta     ($E7),y        ; F4F2 91 E7                                     ..
+        sta     (T2LB),y       ; F4F2 91 E7                                     ..
         ldy     #$00           ; F4F4 A0 00                                     ..
         rts                    ; F4F6 60                                        `
 
 ; ----------------------------------------------------------------------------
 LF4F7:  jsr     LF6A5          ; F4F7 20 A5 F6                                   ..
         pla                    ; F4FA 68                                        h
-        sta     L00E9          ; F4FB 85 E9                                     ..
+        sta     T3LB           ; F4FB 85 E9                                     ..
         pla                    ; F4FD 68                                        h
-        sta     $EA            ; F4FE 85 EA                                     ..
-        inc     L00E9          ; F500 E6 E9                                     ..
+        sta     T3HB           ; F4FE 85 EA                                     ..
+        inc     T3LB           ; F500 E6 E9                                     ..
         bne     LF506          ; F502 D0 02                                     ..
-        inc     $EA            ; F504 E6 EA                                     ..
+        inc     T3HB           ; F504 E6 EA                                     ..
 LF506:  tya                    ; F506 98                                        .
         jsr     LF51D          ; F507 20 1D F5                                   ..
         pha                    ; F50A 48                                        H
         tya                    ; F50B 98                                        .
         clc                    ; F50C 18                                        .
-        adc     L00E9          ; F50D 65 E9                                     e.
-        sta     L00E9          ; F50F 85 E9                                     ..
+        adc     T3LB           ; F50D 65 E9                                     e.
+        sta     T3LB           ; F50F 85 E9                                     ..
         bcc     LF515          ; F511 90 02                                     ..
-        inc     $EA            ; F513 E6 EA                                     ..
+        inc     T3HB           ; F513 E6 EA                                     ..
 LF515:  pla                    ; F515 68                                        h
         tay                    ; F516 A8                                        .
-        jmp     (L00E9)        ; F517 6C E9 00                                  l..
+        jmp     (T3LB)         ; F517 6C E9 00                                  l..
 
 ; ----------------------------------------------------------------------------
         jsr     LF6A5          ; F51A 20 A5 F6                                   ..
 LF51D:  ldy     #$00           ; F51D A0 00                                     ..
         pha                    ; F51F 48                                        H
-LF520:  lda     (L00E9),y      ; F520 B1 E9                                     ..
+LF520:  lda     (T3LB),y       ; F520 B1 E9                                     ..
         beq     LF52E          ; F522 F0 0A                                     ..
         jsr     LF6AC          ; F524 20 AC F6                                   ..
         iny                    ; F527 C8                                        .
         bne     LF520          ; F528 D0 F6                                     ..
-        inc     $EA            ; F52A E6 EA                                     ..
+        inc     T3HB           ; F52A E6 EA                                     ..
         bne     LF520          ; F52C D0 F2                                     ..
 LF52E:  iny                    ; F52E C8                                        .
         pla                    ; F52F 68                                        h
@@ -595,10 +613,10 @@ LF537:  sta     $162C          ; F537 8D 2C 16                                  
         clc                    ; F545 18                                        .
         adc     #$27           ; F546 69 27                                     i'
         sta     $1632          ; F548 8D 32 16                                  .2.
-        lda     $FC            ; F54B A5 FC                                     ..
+        lda     SCRNHI         ; F54B A5 FC                                     ..
         sta     $1631          ; F54D 8D 31 16                                  .1.
         adc     #$A0           ; F550 69 A0                                     i.
-        sta     $1733          ; F552 8D 33 17                                  .3.
+        sta     6530APIO       ; F552 8D 33 17                                  .3.
 LF555:  tya                    ; F555 98                                        .
         sec                    ; F556 38                                        8
         sbc     #$14           ; F557 E9 14                                     ..
@@ -613,7 +631,7 @@ LF561:  tya                    ; F561 98                                        
 LF568:  sta     $162D          ; F568 8D 2D 16                                  .-.
         jsr     LF92E          ; F56B 20 2E F9                                   ..
         sta     $1634          ; F56E 8D 34 16                                  .4.
-        lda     $FC            ; F571 A5 FC                                     ..
+        lda     SCRNHI         ; F571 A5 FC                                     ..
         clc                    ; F573 18                                        .
         adc     #$A0           ; F574 69 A0                                     i.
         sta     $1635          ; F576 8D 35 16                                  .5.
@@ -650,8 +668,10 @@ LF594:  sty     $962F          ; F594 8C 2F 96                                  
         rts                    ; F5BC 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF5BD:  jsr     LF65A          ; F5BD 20 5A F6                                   Z.
-LF5C0:  bit     $1639          ; F5C0 2C 39 16                                  ,9.
+DO CANCEL:
+        jsr     DO CARRIAGE RETURN; F5BD 20 5A F6                                Z.
+DO LINE FEED:
+        bit     $1639          ; F5C0 2C 39 16                                  ,9.
         bmi     LF5D2          ; F5C3 30 0D                                     0.
         lda     $EC            ; F5C5 A5 EC                                     ..
         sec                    ; F5C7 38                                        8
@@ -665,13 +685,13 @@ LF5C0:  bit     $1639          ; F5C0 2C 39 16                                  
         brk                    ; F5CF 00                                        .
         brk                    ; F5D0 00                                        .
         brk                    ; F5D1 00                                        .
-LF5D2:  lda     $1734          ; F5D2 AD 34 17                                  .4.
-        sta     $FB            ; F5D5 85 FB                                     ..
+LF5D2:  lda     6530APIO2      ; F5D2 AD 34 17                                  .4.
+        sta     SCRNLO         ; F5D5 85 FB                                     ..
         clc                    ; F5D7 18                                        .
         adc     #$90           ; F5D8 69 90                                     i.
         sta     $F1            ; F5DA 85 F1                                     ..
         lda     $1635          ; F5DC AD 35 16                                  .5.
-        sta     $FC            ; F5DF 85 FC                                     ..
+        sta     SCRNHI         ; F5DF 85 FC                                     ..
         adc     #$01           ; F5E1 69 01                                     i.
         sta     $F2            ; F5E3 85 F2                                     ..
         lda     $1632          ; F5E5 AD 32 16                                  .2.
@@ -683,17 +703,17 @@ LF5D2:  lda     $1734          ; F5D2 AD 34 17                                  
         tax                    ; F5F3 AA                                        .
         ldy     #$00           ; F5F4 A0 00                                     ..
 LF5F6:  lda     ($F1),y        ; F5F6 B1 F1                                     ..
-        sta     ($FB),y        ; F5F8 91 FB                                     ..
+        sta     (SCRNLO),y     ; F5F8 91 FB                                     ..
         iny                    ; F5FA C8                                        .
         bne     LF5F6          ; F5FB D0 F9                                     ..
-        inc     $FC            ; F5FD E6 FC                                     ..
+        inc     SCRNHI         ; F5FD E6 FC                                     ..
         inc     $F2            ; F5FF E6 F2                                     ..
         dex                    ; F601 CA                                        .
         bne     LF5F6          ; F602 D0 F2                                     ..
         beq     LF607          ; F604 F0 01                                     ..
 LF606:  iny                    ; F606 C8                                        .
 LF607:  lda     ($F1),y        ; F607 B1 F1                                     ..
-        sta     ($FB),y        ; F609 91 FB                                     ..
+        sta     (SCRNLO),y     ; F609 91 FB                                     ..
         cpy     $1636          ; F60B CC 36 16                                  .6.
         bne     LF606          ; F60E D0 F6                                     ..
         txa                    ; F610 8A                                        .
@@ -707,16 +727,17 @@ LF607:  lda     ($F1),y        ; F607 B1 F1                                     
 ; ----------------------------------------------------------------------------
 LF620:  iny                    ; F620 C8                                        .
         bne     LF625          ; F621 D0 02                                     ..
-        inc     $FC            ; F623 E6 FC                                     ..
-LF625:  sta     ($FB),y        ; F625 91 FB                                     ..
+        inc     SCRNHI         ; F623 E6 FC                                     ..
+LF625:  sta     (SCRNLO),y     ; F625 91 FB                                     ..
         dex                    ; F627 CA                                        .
         bne     LF620          ; F628 D0 F6                                     ..
         rts                    ; F62A 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF62B:  cmp     #$09           ; F62B C9 09                                     ..
-        bne     LF69A          ; F62D D0 6B                                     .k
-LF62F:  bit     $1639          ; F62F 2C 39 16                                  ,9.
+ASCII TAB:
+        cmp     #$09           ; F62B C9 09                                     ..
+        bne     ASCII FORM FEED; F62D D0 6B                                     .k
+DO TAB: bit     $1639          ; F62F 2C 39 16                                  ,9.
         bmi     LF63C          ; F632 30 08                                     0.
         clc                    ; F634 18                                        .
         lda     $EB            ; F635 A5 EB                                     ..
@@ -735,17 +756,19 @@ LF647:  sec                    ; F647 38                                        
         sbc     #$3B           ; F648 E9 3B                                     .;
         lda     $EE            ; F64A A5 EE                                     ..
         sbc     #$01           ; F64C E9 01                                     ..
-        bcc     LF653          ; F64E 90 03                                     ..
-        jmp     LF5BD          ; F650 4C BD F5                                  L..
+        bcc     RETURN2        ; F64E 90 03                                     ..
+        jmp     DO CANCEL      ; F650 4C BD F5                                  L..
 
 ; ----------------------------------------------------------------------------
-LF653:  rts                    ; F653 60                                        `
+RETURN2:rts                    ; F653 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF654:  adc     #$20           ; F654 69 20                                     i 
+ASCII CARRIAGE RETURN:
+        adc     #$20           ; F654 69 20                                     i 
         cmp     #$0D           ; F656 C9 0D                                     ..
-        bne     LF677          ; F658 D0 1D                                     ..
-LF65A:  lda     #$00           ; F65A A9 00                                     ..
+        bne     ASCII BACKSPACE; F658 D0 1D                                     ..
+DO CARRIAGE RETURN:
+        lda     #$00           ; F65A A9 00                                     ..
         bit     $1639          ; F65C 2C 39 16                                  ,9.
         bmi     LF664          ; F65F 30 03                                     0.
         sta     $EB            ; F661 85 EB                                     ..
@@ -754,65 +777,65 @@ LF65A:  lda     #$00           ; F65A A9 00                                     
 ; ----------------------------------------------------------------------------
 LF664:  sta     $ED            ; F664 85 ED                                     ..
         sta     $EE            ; F666 85 EE                                     ..
-LF668:  rts                    ; F668 60                                        `
+RETURN: rts                    ; F668 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF669:  cmp     #$0A           ; F669 C9 0A                                     ..
-        bne     LF670          ; F66B D0 03                                     ..
-        jmp     LF5C0          ; F66D 4C C0 F5                                  L..
+ASCII LINE FEED:
+        cmp     #$0A           ; F669 C9 0A                                     ..
+        bne     ASCII CANCEL   ; F66B D0 03                                     ..
+        jmp     DO LINE FEED   ; F66D 4C C0 F5                                  L..
 
 ; ----------------------------------------------------------------------------
-LF670:  cmp     #$18           ; F670 C9 18                                     ..
-        bne     LF668          ; F672 D0 F4                                     ..
-        jmp     LF5BD          ; F674 4C BD F5                                  L..
+ASCII CANCEL:
+        cmp     #$18           ; F670 C9 18                                     ..
+        bne     RETURN         ; F672 D0 F4                                     ..
+        jmp     DO CANCEL      ; F674 4C BD F5                                  L..
 
 ; ----------------------------------------------------------------------------
-LF677:  cmp     #$08           ; F677 C9 08                                     ..
-        bne     LF62B          ; F679 D0 B0                                     ..
+ASCII BACKSPACE:
+        cmp     #$08           ; F677 C9 08                                     ..
+        bne     ASCII TAB      ; F679 D0 B0                                     ..
         bit     $1639          ; F67B 2C 39 16                                  ,9.
         bmi     LF68A          ; F67E 30 0A                                     0.
         lda     $EB            ; F680 A5 EB                                     ..
         sec                    ; F682 38                                        8
         sbc     #$06           ; F683 E9 06                                     ..
-        bcc     LF65A          ; F685 90 D3                                     ..
+        bcc     DO CARRIAGE RETURN; F685 90 D3                                  ..
         sta     $EB            ; F687 85 EB                                     ..
-        .byte   $E0            ; F689 E0                                        .
+        inx                    ; F689 E8                                        .
 LF68A:  lda     $ED            ; F68A A5 ED                                     ..
         sec                    ; F68C 38                                        8
         sbc     #$16           ; F68D E9 16                                     ..
         sta     $ED            ; F68F 85 ED                                     ..
         lda     $EE            ; F691 A5 EE                                     ..
         sbc     #$00           ; F693 E9 00                                     ..
-        bcc     LF65A          ; F695 90 C3                                     ..
+        bcc     DO CARRIAGE RETURN; F695 90 C3                                  ..
         sta     $EE            ; F697 85 EE                                     ..
         rts                    ; F699 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF69A:  cmp     #$0C           ; F69A C9 0C                                     ..
-        bne     LF669          ; F69C D0 CB                                     ..
-        jsr     LF956          ; F69E 20 56 F9                                   V.
-        jsr     LF65A          ; F6A1 20 5A F6                                   Z.
+ASCII FORM FEED:
+        cmp     #$0C           ; F69A C9 0C                                     ..
+        bne     ASCII LINE FEED; F69C D0 CB                                     ..
+        jsr     DO FORM FEED   ; F69E 20 56 F9                                   V.
+        jsr     DO CARRIAGE RETURN; F6A1 20 5A F6                                Z.
         rts                    ; F6A4 60                                        `
 
 ; ----------------------------------------------------------------------------
 LF6A5:  lda     #$0D           ; F6A5 A9 0D                                     ..
         jsr     LF6AC          ; F6A7 20 AC F6                                   ..
         lda     #$0A           ; F6AA A9 0A                                     ..
-LF6AC:  .byte   $2C            ; F6AC 2C                                        ,
-        rti                    ; F6AD 40                                        @
-
-; ----------------------------------------------------------------------------
-LF6AE:  asl     $50,x          ; F6AE 16 50                                     .P
-        .byte   $03            ; F6B0 03                                        .
+LF6AC:  bit     $1640          ; F6AC 2C 40 16                                  ,@.
+LF6AF:  bvc     LF6B4          ; F6AF 50 03                                     P.
         jmp     (L1608)        ; F6B1 6C 08 16                                  l..
 
 ; ----------------------------------------------------------------------------
-        stx     $BF49          ; F6B4 8E 49 BF                                  .I.
+LF6B4:  stx     $BF49          ; F6B4 8E 49 BF                                  .I.
         sty     $BF4A          ; F6B7 8C 4A BF                                  .J.
         and     #$7F           ; F6BA 29 7F                                     ).
         sec                    ; F6BC 38                                        8
         sbc     #$20           ; F6BD E9 20                                     . 
-        bcc     LF654          ; F6BF 90 93                                     ..
+        bcc     ASCII CARRIAGE RETURN; F6BF 90 93                               ..
         sta     $F7            ; F6C1 85 F7                                     ..
         jsr     LF8EB          ; F6C3 20 EB F8                                   ..
         lda     $F7            ; F6C6 A5 F7                                     ..
@@ -838,7 +861,7 @@ LF6D9:  sty     $F2            ; F6D9 84 F2                                     
         jsr     LF715          ; F6E9 20 15 F7                                   ..
         jsr     LF715          ; F6EC 20 15 F7                                   ..
         sty     $FA            ; F6EF 84 FA                                     ..
-LF6F1:  jsr     LF749          ; F6F1 20 49 F7                                   I.
+LF6F1:  jsr     ?F749          ; F6F1 20 49 F7                                   I.
         jsr     LF715          ; F6F4 20 15 F7                                   ..
         lda     $FA            ; F6F7 A5 FA                                     ..
         cmp     #$07           ; F6F9 C9 07                                     ..
@@ -849,7 +872,7 @@ LF6F1:  jsr     LF749          ; F6F1 20 49 F7                                  
         sty     $F6            ; F703 84 F6                                     ..
         jsr     LF715          ; F705 20 15 F7                                   ..
         jsr     LF715          ; F708 20 15 F7                                   ..
-LF70B:  jsr     LF62F          ; F70B 20 2F F6                                   /.
+LF70B:  jsr     DO TAB         ; F70B 20 2F F6                                   /.
         ldy     $BF4A          ; F70E AC 4A BF                                  .J.
         ldx     $BF49          ; F711 AE 49 BF                                  .I.
         rts                    ; F714 60                                        `
@@ -857,31 +880,31 @@ LF70B:  jsr     LF62F          ; F70B 20 2F F6                                  
 ; ----------------------------------------------------------------------------
 LF715:  ldy     #$00           ; F715 A0 00                                     ..
         ldx     $FD            ; F717 A6 FD                                     ..
-        lda     MASK?,x        ; F719 BD 39 F7                                  .9.
-        and     ($FB),y        ; F71C 31 FB                                     1.
+        lda     MASK1,x        ; F719 BD 39 F7                                  .9.
+        and     (SCRNLO),y     ; F71C 31 FB                                     1.
         ora     $F5            ; F71E 05 F5                                     ..
-        sta     ($FB),y        ; F720 91 FB                                     ..
-        lda     MASK?+$08,x    ; F722 BD 41 F7                                  .A.
+        sta     (SCRNLO),y     ; F720 91 FB                                     ..
+        lda     MASK1+$08,x    ; F722 BD 41 F7                                  .A.
         iny                    ; F725 C8                                        .
-        and     ($FB),y        ; F726 31 FB                                     1.
+        and     (SCRNLO),y     ; F726 31 FB                                     1.
         ora     $F6            ; F728 05 F6                                     ..
-        sta     ($FB),y        ; F72A 91 FB                                     ..
-        lda     $FB            ; F72C A5 FB                                     ..
+        sta     (SCRNLO),y     ; F72A 91 FB                                     ..
+        lda     SCRNLO         ; F72C A5 FB                                     ..
         sec                    ; F72E 38                                        8
         sbc     #$28           ; F72F E9 28                                     .(
-        sta     $FB            ; F731 85 FB                                     ..
+        sta     SCRNLO         ; F731 85 FB                                     ..
         bcs     LF737          ; F733 B0 02                                     ..
-        dec     $FC            ; F735 C6 FC                                     ..
+        dec     SCRNHI         ; F735 C6 FC                                     ..
 LF737:  dey                    ; F737 88                                        .
         rts                    ; F738 60                                        `
 
 ; ----------------------------------------------------------------------------
 ; BIT MASK TABLE
-MASK?:  .dbyt   $0381,$C0E0,$F0F8,$FCFE; F739 03 81 C0 E0 F0 F8 FC FE           ........
+MASK1:  .dbyt   $0381,$C0E0,$F0F8,$FCFE; F739 03 81 C0 E0 F0 F8 FC FE           ........
         .dbyt   $FFFF,$FF7F,$3F1F,$0F07; F741 FF FF FF 7F 3F 1F 0F 07           ....?...
 ; ----------------------------------------------------------------------------
-LF749:  .byte   $A3            ; F749 A3                                        .
-        brk                    ; F74A 00                                        .
+; SHOULD THIS BE LDX #$00? A2 00
+?F749:  ldx     #$00           ; F749 A2 00                                     ..
         stx     $F6            ; F74B 86 F6                                     ..
         ldy     $FA            ; F74D A4 FA                                     ..
         cpy     #$05           ; F74F C0 05                                     ..
@@ -922,7 +945,8 @@ LF77D:  tay                    ; F77D A8                                        
         sta     $F7            ; F785 85 F7                                     ..
         iny                    ; F787 C8                                        .
         lda     ($F1),y        ; F788 B1 F1                                     ..
-        rol     $2A2A          ; F78A 2E 2A 2A                                  .**
+; SHOULD BE ROL ROL ROL
+ROLX3:  rol     $2A2A          ; F78A 2E 2A 2A                                  .**
         and     #$03           ; F78D 29 03                                     ).
         ora     $F7            ; F78F 05 F7                                     ..
         jmp     LF757          ; F791 4C 57 F7                                  LW.
@@ -1024,7 +1048,7 @@ LF831:  lda     $F7            ; F831 A5 F7                                     
         sta     $F7            ; F835 85 F7                                     ..
         bit     $F9            ; F837 24 F9                                     $.
         bvc     LF844          ; F839 50 09                                     P.
-        jsr     LF86F          ; F83B 20 6F F8                                   o.
+        jsr     UPSCRN         ; F83B 20 6F F8                                   o.
         jsr     LF887          ; F83E 20 87 F8                                   ..
         jmp     LF810          ; F841 4C 10 F8                                  L..
 
@@ -1051,61 +1075,56 @@ LF85B:  ldy     $FD            ; F85B A4 FD                                     
         bmi     LF86E          ; F862 30 0A                                     0.
         ldy     #$00           ; F864 A0 00                                     ..
         sty     $FD            ; F866 84 FD                                     ..
-        inc     $FB            ; F868 E6 FB                                     ..
+        inc     SCRNLO         ; F868 E6 FB                                     ..
         bne     LF86E          ; F86A D0 02                                     ..
-        inc     $FC            ; F86C E6 FC                                     ..
+        inc     SCRNHI         ; F86C E6 FC                                     ..
 LF86E:  rts                    ; F86E 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF86F:  lda     $FB            ; F86F A5 FB                                     ..
+UPSCRN: lda     SCRNLO         ; F86F A5 FB                                     ..
         sec                    ; F871 38                                        8
         sbc     #$28           ; F872 E9 28                                     .(
-        sta     $FB            ; F874 85 FB                                     ..
+        sta     SCRNLO         ; F874 85 FB                                     ..
         bcs     LF87A          ; F876 B0 02                                     ..
-        dec     $FC            ; F878 C6 FC                                     ..
+        dec     SCRNHI         ; F878 C6 FC                                     ..
 LF87A:  rts                    ; F87A 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF87B:  lda     $FB            ; F87B A5 FB                                     ..
+DNSCRN: lda     SCRNLO         ; F87B A5 FB                                     ..
         clc                    ; F87D 18                                        .
         adc     #$28           ; F87E 69 28                                     i(
-        sta     $FB            ; F880 85 FB                                     ..
+        sta     SCRNLO         ; F880 85 FB                                     ..
         bcc     LF886          ; F882 90 02                                     ..
-        inc     $FC            ; F884 E6 FC                                     ..
+        inc     SCRNHI         ; F884 E6 FC                                     ..
 LF886:  rts                    ; F886 60                                        `
 
 ; ----------------------------------------------------------------------------
 LF887:  jsr     LF85B          ; F887 20 5B F8                                   [.
 LF88A:  ldy     $FD            ; F88A A4 FD                                     ..
-        lda     LF8A2,y        ; F88C B9 A2 F8                                  ...
+        lda     MASK2,y        ; F88C B9 A2 F8                                  ...
         ldy     #$00           ; F88F A0 00                                     ..
         bit     $FA            ; F891 24 FA                                     $.
         bvc     LF89B          ; F893 50 06                                     P.
-        ora     ($FB),y        ; F895 11 FB                                     ..
-        sta     ($FB),y        ; F897 91 FB                                     ..
+        ora     (SCRNLO),y     ; F895 11 FB                                     ..
+        sta     (SCRNLO),y     ; F897 91 FB                                     ..
         clc                    ; F899 18                                        .
         rts                    ; F89A 60                                        `
 
 ; ----------------------------------------------------------------------------
 LF89B:  eor     #$FF           ; F89B 49 FF                                     I.
-        and     ($FB),y        ; F89D 31 FB                                     1.
-        sta     ($FB),y        ; F89F 91 FB                                     ..
+        and     (SCRNLO),y     ; F89D 31 FB                                     1.
+        sta     (SCRNLO),y     ; F89F 91 FB                                     ..
         rts                    ; F8A1 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF8A2:  .byte   $80            ; F8A2 80                                        .
-        rti                    ; F8A3 40                                        @
-
+; BIT MASK TABLE
+MASK2:  .dbyt   $8040,$2010,$0804,$0201; F8A2 80 40 20 10 08 04 02 01           .@ .....
 ; ----------------------------------------------------------------------------
-        jsr     L0810          ; F8A4 20 10 08                                   ..
-        .byte   $04            ; F8A7 04                                        .
-        .byte   $02            ; F8A8 02                                        .
-        .byte   $01            ; F8A9 01                                        .
-LF8AA:  jsr     LF86F          ; F8AA 20 6F F8                                   o.
+LF8AA:  jsr     UPSCRN         ; F8AA 20 6F F8                                   o.
         jmp     LF88A          ; F8AD 4C 8A F8                                  L..
 
 ; ----------------------------------------------------------------------------
-LF8B0:  jsr     LF87B          ; F8B0 20 7B F8                                   {.
+LF8B0:  jsr     DNSCRN         ; F8B0 20 7B F8                                   {.
         jmp     LF88A          ; F8B3 4C 8A F8                                  L..
 
 ; ----------------------------------------------------------------------------
@@ -1157,9 +1176,9 @@ LF8FD:  lda     $162A          ; F8FD AD 2A 16                                  
 
 ; ----------------------------------------------------------------------------
 LF90A:  lda     $1630          ; F90A AD 30 16                                  .0.
-        sta     $FB            ; F90D 85 FB                                     ..
+        sta     SCRNLO         ; F90D 85 FB                                     ..
         lda     $1631          ; F90F AD 31 16                                  .1.
-        sta     $FC            ; F912 85 FC                                     ..
+        sta     SCRNHI         ; F912 85 FC                                     ..
         lda     $EE            ; F914 A5 EE                                     ..
         ror     a              ; F916 6A                                        j
         lda     $ED            ; F917 A5 ED                                     ..
@@ -1171,50 +1190,53 @@ LF919:  pha                    ; F919 48                                        
         lsr     a              ; F920 4A                                        J
         lsr     a              ; F921 4A                                        J
         clc                    ; F922 18                                        .
-        adc     $FB            ; F923 65 FB                                     e.
-        sta     $FB            ; F925 85 FB                                     ..
-        lda     $FC            ; F927 A5 FC                                     ..
+        adc     SCRNLO         ; F923 65 FB                                     e.
+        sta     SCRNLO         ; F925 85 FB                                     ..
+        lda     SCRNHI         ; F927 A5 FC                                     ..
         adc     #$A0           ; F929 69 A0                                     i.
-        sta     $FC            ; F92B 85 FC                                     ..
+        sta     SCRNHI         ; F92B 85 FC                                     ..
         rts                    ; F92D 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF92E:  sta     $FB            ; F92E 85 FB                                     ..
+LF92E:  sta     SCRNLO         ; F92E 85 FB                                     ..
         lda     #$00           ; F930 A9 00                                     ..
-        sta     $FC            ; F932 85 FC                                     ..
+        sta     SCRNHI         ; F932 85 FC                                     ..
         lda     $162B          ; F934 AD 2B 16                                  .+.
         sec                    ; F937 38                                        8
-        sbc     $FB            ; F938 E5 FB                                     ..
+        sbc     SCRNLO         ; F938 E5 FB                                     ..
         bcc     LF8FA          ; F93A 90 BE                                     ..
-        sta     $FB            ; F93C 85 FB                                     ..
+        sta     SCRNLO         ; F93C 85 FB                                     ..
         asl     a              ; F93E 0A                                        .
-        rol     $FC            ; F93F 26 FC                                     &.
+        rol     SCRNHI         ; F93F 26 FC                                     &.
         asl     a              ; F941 0A                                        .
-        rol     $FC            ; F942 26 FC                                     &.
-        adc     $FB            ; F944 65 FB                                     e.
+        rol     SCRNHI         ; F942 26 FC                                     &.
+        adc     SCRNLO         ; F944 65 FB                                     e.
         bcc     LF94A          ; F946 90 02                                     ..
-        inc     $FC            ; F948 E6 FC                                     ..
+        inc     SCRNHI         ; F948 E6 FC                                     ..
 LF94A:  asl     a              ; F94A 0A                                        .
-        rol     $FC            ; F94B 26 FC                                     &.
+        rol     SCRNHI         ; F94B 26 FC                                     &.
         asl     a              ; F94D 0A                                        .
-        rol     $FC            ; F94E 26 FC                                     &.
+        rol     SCRNHI         ; F94E 26 FC                                     &.
         asl     a              ; F950 0A                                        .
-        rol     $FC            ; F951 26 FC                                     &.
-        sta     $FB            ; F953 85 FB                                     ..
+        rol     SCRNHI         ; F951 26 FC                                     &.
+        sta     SCRNLO         ; F953 85 FB                                     ..
         rts                    ; F955 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF956:  ldx     $1633          ; F956 AE 33 16                                  .3.
+DO FORM FEED:
+        ldx     $1633          ; F956 AE 33 16                                  .3.
         lda     #$00           ; F959 A9 00                                     ..
-        sta     $FB            ; F95B 85 FB                                     ..
+        sta     SCRNLO         ; F95B 85 FB                                     ..
         ldy     $1632          ; F95D AC 32 16                                  .2.
-LF960:  stx     $FC            ; F960 86 FC                                     ..
-LF962:  dey                    ; F962 88                                        .
-        sta     ($FB),y        ; F963 91 FB                                     ..
-        bne     LF962          ; F965 D0 FB                                     ..
+FF LOOP1:
+        stx     SCRNHI         ; F960 86 FC                                     ..
+FF LOOP2:
+        dey                    ; F962 88                                        .
+        sta     (SCRNLO),y     ; F963 91 FB                                     ..
+        bne     FF LOOP2       ; F965 D0 FB                                     ..
         dex                    ; F967 CA                                        .
         cpx     #$A0           ; F968 E0 A0                                     ..
-        bcs     LF960          ; F96A B0 F4                                     ..
+        bcs     FF LOOP1       ; F96A B0 F4                                     ..
         rts                    ; F96C 60                                        `
 
 ; ----------------------------------------------------------------------------
@@ -1237,16 +1259,16 @@ LF976:  ror     $FA            ; F976 66 FA                                     
 
 ; ----------------------------------------------------------------------------
         pha                    ; F98A 48                                        H
-        lda     $1703          ; F98B AD 03 17                                  ...
+        lda     6530PBDD       ; F98B AD 03 17                                  ...
         ora     #$03           ; F98E 09 03                                     ..
-        sta     $1703          ; F990 8D 03 17                                  ...
-        lda     $1702          ; F993 AD 02 17                                  ...
+        sta     6530PBDD       ; F990 8D 03 17                                  ...
+        lda     6530PBD        ; F993 AD 02 17                                  ...
         and     #$FC           ; F996 29 FC                                     ).
         ora     #$02           ; F998 09 02                                     ..
-        sta     $1702          ; F99A 8D 02 17                                  ...
-        lda     $1703          ; F99D AD 03 17                                  ...
+        sta     6530PBD        ; F99A 8D 02 17                                  ...
+        lda     6530PBDD       ; F99D AD 03 17                                  ...
         and     #$FC           ; F9A0 29 FC                                     ).
-        sta     $1703          ; F9A2 8D 03 17                                  ...
+        sta     6530PBDD       ; F9A2 8D 03 17                                  ...
         pla                    ; F9A5 68                                        h
         rts                    ; F9A6 60                                        `
 
@@ -1316,7 +1338,7 @@ LFA0C:  cmp     #$3F           ; FA0C C9 3F                                     
         cmp     #$3D           ; FA11 C9 3D                                     .=
         beq     LFA2F          ; FA13 F0 1A                                     ..
         php                    ; FA15 08                                        .
-        lda     ($E7),y        ; FA16 B1 E7                                     ..
+        lda     (T2LB),y       ; FA16 B1 E7                                     ..
         plp                    ; FA18 28                                        (
         bpl     LFA27          ; FA19 10 0C                                     ..
         cmp     #$3E           ; FA1B C9 3E                                     .>
@@ -1526,13 +1548,13 @@ LFB6B:  jsr     LF36C          ; FB6B 20 6C F3                                  
 LFB70:  plp                    ; FB70 28                                        (
         clc                    ; FB71 18                                        .
         bcc     LFB2A          ; FB72 90 B6                                     ..
-LFB74:  lda     ($E7),y        ; FB74 B1 E7                                     ..
+LFB74:  lda     (T2LB),y       ; FB74 B1 E7                                     ..
         beq     LFB70          ; FB76 F0 F8                                     ..
         sta     $E5            ; FB78 85 E5                                     ..
         lda     #$00           ; FB7A A9 00                                     ..
         sta     $E6            ; FB7C 85 E6                                     ..
         iny                    ; FB7E C8                                        .
-        lda     ($E7),y        ; FB7F B1 E7                                     ..
+        lda     (T2LB),y       ; FB7F B1 E7                                     ..
         cmp     $1624          ; FB81 CD 24 16                                  .$.
         bne     LFB70          ; FB84 D0 EA                                     ..
         iny                    ; FB86 C8                                        .
@@ -1587,7 +1609,7 @@ LFBB9:  lda     $01,x          ; FBB9 B5 01                                     
         lda     $E2            ; FBCE A5 E2                                     ..
         sbc     $DE            ; FBD0 E5 DE                                     ..
         sta     $E4            ; FBD2 85 E4                                     ..
-        bcc     LFC16          ; FBD4 90 40                                     .@
+        bcc     LFC1A          ; FBD4 90 44                                     .D
         ldx     #$E3           ; FBD6 A2 E3                                     ..
         jsr     LFBB9          ; FBD8 20 B9 FB                                   ..
         ldx     #$DF           ; FBDB A2 DF                                     ..
@@ -1614,8 +1636,8 @@ RESET:  cld                    ; FC00 D8                                        
         ldx     #$FF           ; FC01 A2 FF                                     ..
         txs                    ; FC03 9A                                        .
         lda     #$00           ; FC04 A9 00                                     ..
-        sta     $1701          ; FC06 8D 01 17                                  ...
-        lda     $1700          ; FC09 AD 00 17                                  ...
+        sta     6530PADD       ; FC06 8D 01 17                                  ...
+        lda     6530IO         ; FC09 AD 00 17                                  ...
         bpl     LFC14          ; FC0C 10 06                                     ..
         asl     a              ; FC0E 0A                                        .
         sta     $0F            ; FC0F 85 0F                                     ..
@@ -1623,21 +1645,20 @@ LFC11:  jmp     LFC9B          ; FC11 4C 9B FC                                  
 
 ; ----------------------------------------------------------------------------
 LFC14:  asl     a              ; FC14 0A                                        .
-LFC15:  .byte   $10            ; FC15 10                                        .
-LFC16:  .byte   $03            ; FC16 03                                        .
-        jmp     L1C22          ; FC17 4C 22 1C                                  L".
+LFC15:  bpl     LFC1A          ; FC15 10 03                                     ..
+        jmp     KIMRST         ; FC17 4C 22 1C                                  L".
 
 ; ----------------------------------------------------------------------------
-        cld                    ; FC1A D8                                        .
+LFC1A:  cld                    ; FC1A D8                                        .
         sei                    ; FC1B 78                                        x
         ldx     #$FF           ; FC1C A2 FF                                     ..
         txs                    ; FC1E 9A                                        .
         lda     #$00           ; FC1F A9 00                                     ..
-        sta     $1583          ; FC21 8D 83 15                                  ...
-        lda     $158C          ; FC24 AD 8C 15                                  ...
+        sta     6522IO+$03     ; FC21 8D 83 15                                  ...
+        lda     6522IO+$0C     ; FC24 AD 8C 15                                  ...
         and     #$F0           ; FC27 29 F0                                     ).
         ora     $0E            ; FC29 05 0E                                     ..
-        sta     $158C          ; FC2B 8D 8C 15                                  ...
+        sta     6522IO+$0C     ; FC2B 8D 8C 15                                  ...
 LFC2E:  jsr     LFC7F          ; FC2E 20 7F FC                                   ..
         cmp     #$58           ; FC31 C9 58                                     .X
         bne     LFC2E          ; FC33 D0 F9                                     ..
@@ -1676,17 +1697,17 @@ LFC74:  inc     $02            ; FC74 E6 02                                     
         jmp     (L0004)        ; FC7C 6C 04 00                                  l..
 
 ; ----------------------------------------------------------------------------
-LFC7F:  lda     $158D          ; FC7F AD 8D 15                                  ...
+LFC7F:  lda     6522IO+$0D     ; FC7F AD 8D 15                                  ...
         and     #$02           ; FC82 29 02                                     ).
         beq     LFC7F          ; FC84 F0 F9                                     ..
-        lda     $1581          ; FC86 AD 81 15                                  ...
+        lda     6522IO+$01     ; FC86 AD 81 15                                  ...
         pha                    ; FC89 48                                        H
-        lda     $158C          ; FC8A AD 8C 15                                  ...
+        lda     6522IO+$0C     ; FC8A AD 8C 15                                  ...
         and     #$F0           ; FC8D 29 F0                                     ).
         ora     #$0C           ; FC8F 09 0C                                     ..
-        sta     $158C          ; FC91 8D 8C 15                                  ...
+        sta     6522IO+$0C     ; FC91 8D 8C 15                                  ...
         ora     #$0E           ; FC94 09 0E                                     ..
-        sta     $158C          ; FC96 8D 8C 15                                  ...
+        sta     6522IO+$0C     ; FC96 8D 8C 15                                  ...
         pla                    ; FC99 68                                        h
         rts                    ; FC9A 60                                        `
 
@@ -1696,13 +1717,13 @@ LFC9B:  cld                    ; FC9B D8                                        
         txs                    ; FC9E 9A                                        .
         sei                    ; FC9F 78                                        x
         lda     #$00           ; FCA0 A9 00                                     ..
-        sta     $1580          ; FCA2 8D 80 15                                  ...
-        sta     $158E          ; FCA5 8D 8E 15                                  ...
-        sta     $1583          ; FCA8 8D 83 15                                  ...
+        sta     6522IO         ; FCA2 8D 80 15                                  ...
+        sta     6522IO+$0E     ; FCA5 8D 8E 15                                  ...
+        sta     6522IO+$03     ; FCA8 8D 83 15                                  ...
         lda     #$EE           ; FCAB A9 EE                                     ..
-        sta     $158C          ; FCAD 8D 8C 15                                  ...
+        sta     6522IO+$0C     ; FCAD 8D 8C 15                                  ...
         lda     #$FF           ; FCB0 A9 FF                                     ..
-        sta     $1582          ; FCB2 8D 82 15                                  ...
+        sta     6522IO+$02     ; FCB2 8D 82 15                                  ...
         lda     #$00           ; FCB5 A9 00                                     ..
         sta     $06            ; FCB7 85 06                                     ..
         sta     $08            ; FCB9 85 08                                     ..
@@ -1818,10 +1839,9 @@ LFD6C:  lda     ($08,x)        ; FD6C A1 08                                     
 LFD7B:  jsr     LFDB9          ; FD7B 20 B9 FD                                   ..
         bcs     LFD9A          ; FD7E B0 1A                                     ..
 LFD80:  inc     $08            ; FD80 E6 08                                     ..
-        bne     LFD87          ; FD82 D0 03                                     ..
+        bne     LFD86          ; FD82 D0 02                                     ..
         inc     $09            ; FD84 E6 09                                     ..
-        .byte   $A5            ; FD86 A5                                        .
-LFD87:  php                    ; FD87 08                                        .
+LFD86:  lda     $08            ; FD86 A5 08                                     ..
         cmp     #$00           ; FD88 C9 00                                     ..
         bne     LFD9A          ; FD8A D0 0E                                     ..
         lda     $09            ; FD8C A5 09                                     ..
@@ -1834,18 +1854,18 @@ LFD87:  php                    ; FD87 08                                        
 LFD9A:  rts                    ; FD9A 60                                        `
 
 ; ----------------------------------------------------------------------------
-LFD9B:  lda     $158D          ; FD9B AD 8D 15                                  ...
+LFD9B:  lda     6522IO+$0D     ; FD9B AD 8D 15                                  ...
         sec                    ; FD9E 38                                        8
         and     #$02           ; FD9F 29 02                                     ).
         beq     LFDB8          ; FDA1 F0 15                                     ..
-        lda     $1581          ; FDA3 AD 81 15                                  ...
+        lda     6522IO+$01     ; FDA3 AD 81 15                                  ...
         pha                    ; FDA6 48                                        H
-        lda     $158C          ; FDA7 AD 8C 15                                  ...
+        lda     6522IO+$0C     ; FDA7 AD 8C 15                                  ...
         and     #$F0           ; FDAA 29 F0                                     ).
         ora     #$0C           ; FDAC 09 0C                                     ..
-        sta     $158C          ; FDAE 8D 8C 15                                  ...
+        sta     6522IO+$0C     ; FDAE 8D 8C 15                                  ...
         ora     #$0E           ; FDB1 09 0E                                     ..
-        sta     $158C          ; FDB3 8D 8C 15                                  ...
+        sta     6522IO+$0C     ; FDB3 8D 8C 15                                  ...
         pla                    ; FDB6 68                                        h
         clc                    ; FDB7 18                                        .
 LFDB8:  rts                    ; FDB8 60                                        `
@@ -1855,17 +1875,17 @@ LFDB9:  pha                    ; FDB9 48                                        
         sec                    ; FDBA 38                                        8
         bit     $0E            ; FDBB 24 0E                                     $.
         bmi     LFDD5          ; FDBD 30 16                                     0.
-        sta     $1580          ; FDBF 8D 80 15                                  ...
-        lda     $158C          ; FDC2 AD 8C 15                                  ...
+        sta     6522IO         ; FDBF 8D 80 15                                  ...
+        lda     6522IO+$0C     ; FDC2 AD 8C 15                                  ...
         and     #$0F           ; FDC5 29 0F                                     ).
         ora     #$C0           ; FDC7 09 C0                                     ..
-        sta     $158C          ; FDC9 8D 8C 15                                  ...
+        sta     6522IO+$0C     ; FDC9 8D 8C 15                                  ...
         ora     #$E0           ; FDCC 09 E0                                     ..
-        sta     $158C          ; FDCE 8D 8C 15                                  ...
+        sta     6522IO+$0C     ; FDCE 8D 8C 15                                  ...
         sec                    ; FDD1 38                                        8
         ror     $0E            ; FDD2 66 0E                                     f.
         clc                    ; FDD4 18                                        .
-LFDD5:  lda     $158D          ; FDD5 AD 8D 15                                  ...
+LFDD5:  lda     6522IO+$0D     ; FDD5 AD 8D 15                                  ...
         and     #$11           ; FDD8 29 11                                     ).
         beq     LFDE0          ; FDDA F0 04                                     ..
         lda     #$00           ; FDDC A9 00                                     ..
@@ -1874,9 +1894,6 @@ LFDE0:  pla                    ; FDE0 68                                        
         rts                    ; FDE1 60                                        `
 
 ; ----------------------------------------------------------------------------
-NMIV:   .byte   $1C            ; FFFA 1C                                        .
-        .byte   $1C            ; FFFB 1C                                        .
-RSTV:   brk                    ; FFFC 00                                        .
-        .byte   $FC            ; FFFD FC                                        .
-IRQV:   .byte   $1F            ; FFFE 1F                                        .
-        .byte   $1C            ; FFFF 1C                                        .
+NMIV:   .addr   NMI            ; FFFA 1C 1C                                     ..
+RSTV:   .addr   RESET          ; FFFC 00 FC                                     ..
+IRQV:   .addr   IRQ            ; FFFE 1F 1C                                     ..

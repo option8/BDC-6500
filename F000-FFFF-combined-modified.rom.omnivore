@@ -1,0 +1,53 @@
+# omnivore 0.14.0b1 extra_metadata=v1
+{
+    "__traits_version__": "4.6.0.dev423", 
+    "antic_color_registers": [
+        4,
+        30,
+        68,
+        213,
+        40,
+        202,
+        148,
+        70,
+        0
+    ], 
+    "antic_font_data": {
+        "char_h": 8,
+        "char_w": 8,
+        "data": {"py/bytes": "=00=00=00=00=00=00=00=00=00=18=18=18=18=00=18=00=00fff=00=00=00=00=00f=FFff=\n=FFf=00=18>`<=06|=18=00=00fl=180fF=00=1C6=1C8of;=00=00=18=18=18=00=00=00=00=\n=00=0E=1C=18=18=1C=0E=00=00p8=18=188p=00=00f<=FF<f=00=00=00=18=18~=18=18=00=\n=00=00=00=00=00=00=18=180=00=00=00~=00=00=00=00=00=00=00=00=00=18=18=00=00=\n=06=0C=180`@=00=00<fnvf<=00=00=188=18=18=18~=00=00<f=0C=180~=00=00~=0C=18=\n=0Cf<=00=00=0C=1C<l~=0C=00=00~`|=06f<=00=00<`|ff<=00=00~=06=0C=1800=00=00<f=\n<ff<=00=00<f>=06=0C8=00=00=00=18=18=00=18=18=00=00=00=18=18=00=18=180=06=0C=\n=180=18=0C=06=00=00=00~=00=00~=00=00`0=18=0C=180`=00=00<f=0C=18=00=18=00=00=\n<fnn`>=00=00=18<ff~f=00=00|f|ff|=00=00<f``f<=00=00xlfflx=00=00~`|``~=00=00~=\n`|```=00=00>``nf>=00=00ff~fff=00=00~=18=18=18=18~=00=00=06=06=06=06f<=00=00=\nflxxlf=00=00`````~=00=00cw=7Fkcc=00=00fv~~nf=00=00<ffff<=00=00|ff|``=00=00<=\nfffl6=00=00|ff|lf=00=00<`<=06=06<=00=00~=18=18=18=18=18=00=00fffff~=00=00ff=\nff<=18=00=00cck=7Fwc=00=00ff<<ff=00=00ff<=18=18=18=00=00~=0C=180`~=00=00=1E=\n=18=18=18=18=1E=00=00@`0=18=0C=06=00=00x=18=18=18=18x=00=00=08=1C6c=00=00=\n=00=00=00=00=00=00=00=FF=00=006=7F=7F>=1C=08=00=18=18=18=1F=1F=18=18=18=03=\n=03=03=03=03=03=03=03=18=18=18=F8=F8=00=00=00=18=18=18=F8=F8=18=18=18=00=00=\n=00=F8=F8=18=18=18=03=07=0E=1C8p=E0=C0=C0=E0p8=1C=0E=07=03=01=03=07=0F=1F?=\n=7F=FF=00=00=00=00=0F=0F=0F=0F=80=C0=E0=F0=F8=FC=FE=FF=0F=0F=0F=0F=00=00=00=\n=00=F0=F0=F0=F0=00=00=00=00=FF=FF=00=00=00=00=00=00=00=00=00=00=00=00=FF=FF=\n=00=00=00=00=F0=F0=F0=F0=00=1C=1Cww=08=1C=00=00=00=00=1F=1F=18=18=18=00=00=\n=00=FF=FF=00=00=00=18=18=18=FF=FF=18=18=18=00=00<~~~<=00=00=00=00=00=FF=FF=\n=FF=FF=C0=C0=C0=C0=C0=C0=C0=C0=00=00=00=FF=FF=18=18=18=18=18=18=FF=FF=00=00=\n=00=F0=F0=F0=F0=F0=F0=F0=F0=18=18=18=1F=1F=00=00=00x`x`~=18=1E=00=00=18<~=\n=18=18=18=00=00=18=18=18~<=18=00=00=180~0=18=00=00=00=18=0C~=0C=18=00=00=00=\n=18<~~<=18=00=00=00<=06>f>=00=00``|ff|=00=00=00<```<=00=00=06=06>ff>=00=00=\n=00<f~`<=00=00=0E=18>=18=18=18=00=00=00>ff>=06|=00``|fff=00=00=18=008=18=18=\n<=00=00=06=00=06=06=06=06<=00``lxlf=00=008=18=18=18=18<=00=00=00f=7F=7Fkc=\n=00=00=00|ffff=00=00=00<fff<=00=00=00|ff|``=00=00>ff>=06=06=00=00|f```=00=\n=00=00>`<=06|=00=00=18~=18=18=18=0E=00=00=00ffff>=00=00=00fff<=18=00=00=00c=\nk=7F>6=00=00=00f<=18<f=00=00=00fff>=0Cx=00=00~=0C=180~=00=00=18<~~=18<=00=\n=18=18=18=18=18=18=18=18=00~x|nf=06=00=08=188x8=18=08=00=10=18=1C=1E=1C=18=\n=10=00"},
+        "name": "8x8 Atari Default Font"
+    }, 
+    "baseline document": "file:///Users/option8/Dropbox/Projects/retro connector/GITHUB/BDC-6500/F000-FFFF-combined-modified.rom", 
+    "bitmap width": 1, 
+    "bitmap zoom": 5, 
+    "bitmap_renderer": 0, 
+    "color_standard": 0, 
+    "comment ranges": [], 
+    "comments": [], 
+    "data ranges": [
+        [0, 481],
+        [1849, 1866],
+        [2210, 2218],
+        [3554, 4089]
+    ], 
+    "diff highlight": false, 
+    "disassembler": 0, 
+    "font_mapping": 0, 
+    "font_renderer": 7, 
+    "map width": 16, 
+    "map zoom": 2, 
+    "memory_map": 0, 
+    "mime_prefix": "application/octet-stream", 
+    "name": "Generic 6502", 
+    "page_renderer": 0, 
+    "serialized user segments": [
+        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [0, 481], "error": null, "map_width": 40, "name": "Character ROM", "page_size": -1, "start_addr": 61440, "verbose_name": null}},
+        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [2210, 2218], "error": null, "map_width": 40, "name": "bit mask", "page_size": -1, "start_addr": 2210, "verbose_name": null}},
+        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [481, 1849], "error": null, "map_width": 40, "name": "segment 1", "page_size": -1, "start_addr": 61921, "verbose_name": null}},
+        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [1867, 3554], "error": null, "map_width": 40, "name": "segment 2", "page_size": -1, "start_addr": 63307, "verbose_name": null}},
+        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [3554, 4089], "error": null, "map_width": 40, "name": "zeroes", "page_size": -1, "start_addr": 3554, "verbose_name": null}},
+        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [4090, 4096], "error": null, "map_width": 40, "name": "vectors", "page_size": -1, "start_addr": 65530, "verbose_name": null}},
+        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [1849, 1865], "error": null, "map_width": 40, "name": "MASK1", "page_size": -1, "start_addr": 1849, "verbose_name": null}}
+    ]
+}

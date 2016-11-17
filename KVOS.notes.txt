@@ -1,0 +1,468 @@
+KIM-1 with 
+	6530-002 at
+	6530-003 at
+
+6522 at $1580
+
+MTU 16K Memory at $2000-$5FFF
+MTU Visable Memory 8k at $6000-7FFF
+
+BDC custom ROM board with 
+	6532 at
+	6530 ???
+
+
+
+to display character bitmap:
+character (ASCII?) = A
+character length = 5
+character start address = 5 * A <-- look for "multiply by five" routine (A + 4A) ADC followed by two ASLs
+96 chars in rom (480 bytes long) <-- look for #$60 or #$59
+
+VM is 320x200px <-- look for coordinates to bytes routines
+320=40 bytes<-- look for multiply/divide by 40, (A + 4A) * 8A. multiplication by 2 = ASL, division = LSR 
+40 columns of text <-- look for add/subtract 40 move up/down column
+
+
+VM board addresses top left to lower right. 
+character bitmap main body is flipped <-- look for decrementing loop x 8
+
+LF90A:  lda     $1630          ; e.g. A = 8
+        sta     $FB            ; $FB = 8
+        lda     $1631          ; e.g. A = 0x10
+        sta     $FC            ; $FC = $10
+        lda     $EE            ; e.g. A = 32
+        ror     a              ; A = 16, Carry Clear
+        lda     $ED            ; e.g. A = $AA 10101010
+LF919:  pha                    ; stack = [$AA]
+        and     #$07           ; clear all but last 3 bits A = 2 00000010
+        sta     $FD            ; FD = 2
+        pla                    ; A = $AA, clear stack
+        ror     a              ; A = $55, 01010101, div/2
+        lsr     a              ; A = $2A, 00101010  div/4
+        lsr     a              ; A = $15, 00010101  div/8
+        clc                    ; clear carry
+        adc     $FB            ; adds $15 to original value at $1630, e.g A = $1D 00011101
+        sta     $FB            ; stores result in $FB = $1D
+        lda     $FC            ; loads original $1631 val. e.g. A = $10
+        adc     #$A0           ; adds $A0 10100000. A = $B0 10110000
+        sta     $FC            ; FC = $B0 10110000
+        rts                    ; 
+        							$1630 = 	$8 	00001000
+        							$1631 = 	$10 00010000
+        							$FB = 		$1D 00011101
+                					$FC = 		$B0 10110000
+
+        lda     #$B3           ; F535 A9 B3                                     ..
+LF537:  sta     $162C          ; F537 8D 2C 16                                  .,.
+        ldx     #$C7           ; F53A A2 C7                                     ..
+        stx     $162B          ; F53C 8E 2B 16                                  .+.
+        jsr     LF92E          ; F53F 20 2E F9                                   ..
+
+A = #$B3 returns: A = #$20, FC = #$03, FB = #$20
+A = #$C7 returns:
+	
+LF92E:  sta     $FB            ; $FB = #$B3 (179)
+        lda     #$00           ; A = 0
+        sta     $FC            ; $FC = 0
+        lda     $162B          ; A = #$C7 (199) ($162B set at $F53C)
+        sec                    ; set carry
+        sbc     $FB            ; subtract #$B3 from #$C7 (199 - 179 = 20 Carry Cleared)
+        bcc     LF8FA          ; if #$C7 < 180 jumps to location stored at 160C -> ???
+        sta     $FB            ; else store the difference back at $FB = #$14 (20)
+        asl     a              ; multiply by 2 #$28 (40)
+        rol     $FC            ; 0
+        asl     a              ; multiply by 2 #$50 (80)
+        rol     $FC            ; 0
+        adc     $FB            ; add to $FB. A = #$64 (100) <-- just multiplied by 5.
+        bcc     LF94A          ; < FF, no carry, skips to F94A
+        inc     $FC            ; 	skipped, would set FC = 1
+LF94A:  asl     a              ; multiply by 2 =#$C8 (200)
+        rol     $FC            ; 0
+        asl     a              ; multiply by 2 =#$90 (400) carry set
+        rol     $FC            ; $FC = 1 carry clear
+        asl     a              ; multiply by 2 =#$20 (400) carry set <-- just multiplied by 40.
+        rol     $FC            ; $FC = #$03 carry clear
+        sta     $FB            ; $FB = #$20
+        rts                    ; 
+
+
+
+
+
+
+$1600 - $1613 jump table
+
+
+So much happening at 1630 range, i wonder if the references to 1730 are glitches.
+
+
+$F1E2 (T1)
+JSR to $F3A8 (check data table 2 location has been set)
+if zero (location unset)
+	$F1F8
+	load A with 0
+	store A at data table 1 (BF51)
+	JSR to $F39D
+		$F39D
+		
+$F3A8 (Check data table initialized)
+loads A with location of data table 2 (uninitialized, is it 0?)
+if 0, $F3B7, RTS <- first pass
+
+!0 falls through, if carry set (from an SEC or IN* or ADC) $F3B3
+
+carry clear falls through
+compare A with value at $161E (???)
+CLC, RTS
+
+$F3B3
+compare A with value at $161E (???)
+SEC, RTS
+
+first pass returns with A set to 0 (or data table initial value)
+subsequent passes leave carry as-is, compares data table val with val at $161e (???)
+
+
+
+$F2E1 (T2)
+puts #5D #BF into $E7 $E8
+lookup/data table 2 location is now $BF5D
+NO REFERENCES?
+
+
+   
+#L0004           := $0004
+#L00E9           := $00E9
+#L0810           := $0810
+
+#L4CFD           := $4CFD
+        
+       
+       
+       
+$F1 lo byte of character ROM
+$F2 hi byte of character ROM
+$F3
+$F4
+$F5        
+        
+#	CHKHI   =     $F6
+#	CHKSUM  =     $F7
+#	INL     =     $F8       INPUT BUFFER
+#	INH     =     $F9       INPUT BUFFER
+#	POINTL  =     $FA       LSB OF OPEN CELL
+#	POINTH  =     $FB       MSB OF OPEN CELL
+#	TEMP    =     $FC
+#	TMPX    =     $FD
+#	CHAR    =     $FE
+#	MODE    =     $FF
+
+
+
+
+
+LF6D9:  sty     $F2            ; 
+        ldy     #$00           ; y = 0
+        sty     $FA            ; $FA = 0
+        lda     ($F1),y        ; $F1 = first byte of character
+        sta     $F4            ; $F4 = first byte to display
+        bmi     LF6F1          ; if bit 7 = 1
+        sty     $F5            ; $F5 = 0
+        sty     $F6            ; $F6 = 0
+        jsr     LF715          ; screen position down 1 row, ???
+        jsr     LF715          ; screen position down 1 row, ???
+        sty     $FA            ; $FA = 0
+
+LF6F1:  jsr     ?F749          ;
+        jsr     LF715          ;
+        lda     $FA            ;
+        cmp     #$07           ;
+        bmi     LF6F1          ;
+        bit     $F4            ;
+        bpl     LF70B          ;
+        sty     $F5            ;
+        sty     $F6            ;
+        jsr     LF715          ;
+        jsr     LF715          ;
+LF70B:  jsr     LF62F          ;
+        ldy     $BF4A          ;
+        ldx     $BF49          ;
+        rts                    ;
+
+$FB = byte position on screen
+$FC = 
+$FD = 0 ???
+
+MASK1
+0 ......XX
+1 X......X
+2 XX......
+3 XXX.....
+4 XXXX....
+5 XXXXX...
+6 XXXXXX..
+7 XXXXXXX.
+8 XXXXXXXX
+9 XXXXXXXX
+a XXXXXXXX
+b .XXXXXXX
+c ..XXXXXX
+d ...XXXXX
+e ....XXXX
+f .....XXX
+
+
+LF715:  ldy     #$00           ; y = 0
+        ldx     $FD            ; x = 0
+        lda     MASK1,x        ; A = ......XX
+        and     (SCRNLO),y     ; gets last 2 bits of byte at current screen position
+        ora     $F5            ; adds last 2 bits of $F5 to A
+        sta     (SCRNLO),y     ; store byte at current screen position
+        lda     MASK1+$08,x    ; A = XXXXXXXX
+        iny                    ; y = 1
+        and     (SCRNLO),y     ; get bits of next screen byte
+        ora     $F6            ; add bits of $F6 to A
+        sta     (SCRNLO),y     ; store byte at next screen position
+        lda     SCRNLO         ; load current screen position into A
+        sec                    ; set carry
+        sbc     #$28           ; subtract 40, go down a line
+        sta     SCRNLO         ; update screen position pointer
+        bcs     LF737          ; 
+        dec     SCRNHI         ; adjust high byte if necessary
+LF737:  dey                    ; y = 0 again
+        rts                    ; return
+
+
+$FA = #$00
+$FD = ?
+
+?F749:  ldx		#$00           X = 0
+        stx     $F6            reset byte for display
+        ldy     $FA            $Fa = 0 Ycounter?
+        cpy     #$05           compare to 5
+        bpl     LF775          Y > 5 --> F775 (already did 5 bytes) 
+        lda     ($F1),y        $F1 = start byte of char, y = byte of char
+        and     #$1F           ...XXXXX = gets last 5 bits
+
+LF757:  ldx     $FD            $Fd = Xcounter? start at ?
+        cpx     #$03           compare with 3
+        beq     LF768          if == 3 -> $F768
+        bmi     LF76D          < 3 --> f76d
+        dex                    > 3, then x - 1
+        dex                    x - 1
+        dex                    x - 1
+
+LF762:  lsr     a              bits into carry. LOOP
+        ror     $F6            carry into display byte
+        dex                    x - 1
+        bne     LF762          LOOP until x = 0 (5 times?)
+
+LF768:  sta     $F5            $F5 = rotated byte (i assume it's 0 after all the RORs?)
+        inc     $FA            Ycounter + 1
+        rts                    
+
+; -----------------------------
+LF76D:  asl     a              shift A left
+        cpx     #$02           i assume we need to do this twice
+        beq     LF768          if it's been done twice, go to f768
+        inx                    otherwise increment X
+        bne     LF76D          loop if !0 
+
+LF775:  lda     #$01           A = 1
+        cpy     #$05           compare Y to 5
+        beq     LF77D          if Y == 5 skip over
+        lda     #$03           set A = 3
+LF77D:  tay                    Y = (1 or 3)
+        lda     ($F1),y        load byte from ($F2 $F1) + 1 / + 3	X..X...X
+        lsr     a              										.X..X...
+        lsr     a              										..X..X..
+        lsr     a              move three bits right				...X..X.	
+        and     #$1C           keep only ...XXX.. bits				---X..--
+        sta     $F7            store at F7							...X....
+        iny                    Y = (2 or 4)
+        lda     ($F1),y        load byte from ($F2 $F1) + 2 / + 4	.X.X...X
+        rol     				rotate left three times			.	X.X...X.
+        2A						first two bits are				X	.X...X..
+        2A          			 in last 2 positions now			X...X..X
+        and     #$03           keep only ......XX bits				------.X
+        ora     $F7            put those into $F7					...X...X
+        jmp     LF757          
+
+($F1) = CHARACTER START BYTE
+
+
+"A" bitmap
+  012 34567	
+0 ... X...X
+1 X.. X...X
+2 .X. X...X
+3 .XX XXXXX
+4 X.. X...X
+
+
+.XX X.	first 3 bits of byte +3, first 2 bits of byte +4
+X.. .X	first 3 bits of byte +1, first 2 bits of byte +2
+X...X	bits 3-7 of byte +4...
+XXXXX		+3
+X...X		+2
+X...X		+1
+X...X		+0
+
+
+
+
+
+
+
+LF85B:  ldy     $FD            ; load loop counter
+        iny                    ; increment
+        cpy     #$08           ; compare to 8. 
+        sty     $FD            ; $FD++
+        bmi     LF86E          ; A bit 7 = 1 ???
+        ldy     #$00           ; y = 0
+        sty     $FD            ; $FD = 0
+        inc     SCRNLO         ; increment screen pointer byte
+        bne     LF86E          ; if loop counter <> 8, skip
+        inc     SCRNHI         ; if loop counter == 8, increment screen pointer hi byte
+LF86E:  rts                    ; 
+
+
+swaps $EB-$EC with $F3-$F4
+LF84D:  ldx     #$01           ; X = 1
+LF84F:  lda     $EB,x          ; A = $EC; A = $EB
+        ldy     $F3,x          ; Y = $F4; Y = $F3
+        sta     $F3,x          ; put A in $F4, put A in $F3
+        sty     $EB,x          ; put Y in $EC, put Y in $EB
+        dex                    ; X = 0
+        bpl     LF84F          ; do it again with X = 0
+        rts                    ; 
+
+
+
+
+
+
+
+
+Changes to F000-FFFF-combined-modified.rom
+
+I assume one-bit flips either as a result of my reader being imperfect, or the ROMs suffering "bit rot" from so many years uncovered.
+
+Making my best guess. Nothing in this life is certain.
+
+
+
+        bcc     LFC16          ; FBD4 90 40 
+to 
+        bcc     LFC1A          ; FBD4 90 44
+        
+
+        jsr     LF6AE          ; F4B3 20 AE F6
+to
+        jsr     LF6AF          ; F4B3 20 AF F6 
+        
+        
+        .byte   $7C            ; F478 7C
+to
+        .byte   $7D            ; F478 7D
+    
+    
+        .byte   $E0            ; F689 E0 
+to
+        inx                    ; F689 E8 
+
+        bne     LFD87          ; FD82 D0 03
+to
+        bne     LFD86          ; FD82 D0 02
+    
+        
+?F749:  .byte   $A3            ; F749 A3                                        .
+to
+?F749:  ldx     #$00           ; F749 A2 00        
+
+
+
+
+is $1639 shift key, control key? seems to modify behavior of ASCII characters (tab, backspace, etc)
+
+320px x 200px
+?40char? x 25lines
+
+$EB = text X coord?
+
+
+
+
+; ----------------------------
+LF6A5:  lda     #$0D          
+        jsr     LF6AC         
+        lda     #$0A          
+LF6AC:  bit     $1640        $1640 input buffer? control key?
+LF6AF:  bvc     LF6B4        bit 6 clear .X...... (not an ASCII letter) 
+        jmp     (L1608)       
+
+; ----------------------------
+LF6B4:  stx     $BF49         temp X stor
+        sty     $BF4A         temp Y stor
+        and     #$7F          get bits 0-6 .XXXXXXX
+        sec                   
+        sbc     #$20          subtract 32
+        bcc     ASCII CR		less than 32 == control char
+        sta     $F7           
+        jsr     LF8EB         
+        lda     $F7           
+        sta     $F1           
+        ldy     #$F0          
+        asl     a             
+        asl     a             
+        bcc     LF6D2         
+        iny                   
+        clc                   
+LF6D2:  adc     $F1           
+        sta     $F1           
+        bcc     LF6D9         
+        iny                   
+LF6D9:  sty     $F2           
+        ldy     #$00          
+        sty     $FA           
+        lda     ($F1),y       
+        sta     $F4           
+        bmi     LF6F1         
+        sty     $F5           
+        sty     $F6           
+        jsr     LF715         
+        jsr     LF715         
+        sty     $FA           
+LF6F1:  jsr     ?F749         
+        jsr     LF715         
+        lda     $FA           
+        cmp     #$07          
+        bmi     LF6F1         
+        bit     $F4           
+        bpl     LF70B         
+        sty     $F5           
+        sty     $F6           
+        jsr     LF715         
+        jsr     LF715         
+LF70B:  jsr     DO TAB        
+        ldy     $BF4A         
+        ldx     $BF49         
+        rts                   
+
+
+
+
+write buncha zeroes to the Visable Memory
+
+$2000
+
+
+ A9 00       LDA   #$00
+ A8          TAY
+ 99 00 60    STA   $6000,Y
+ C8          INY
+ D0 FA       BNE   $2003
+ EE 05 20    INC   $2005
+ D0 F5       BNE   $2003
+ 60          RTS

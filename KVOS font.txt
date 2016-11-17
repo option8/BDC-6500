@@ -1,0 +1,116 @@
+KVOS 
+A
+11 91 51 7f 91
+B
+1e 91 51 fe 91
+C
+0e 91 50 70 90
+
+
+DATA:
+A
+00111000 = #$38
+01000100 = #$44
+01111100 = #$7C
+01000100 = #$44
+01000100 = #$44
+01000100 = #$44
+00000000 = #$00
+00000000 = #$00
+B
+01111000 = 78
+01000100 = 44
+01111100 = 7c
+01000100 = 44
+01000100 = 44
+01111000 = 78
+00000000 = #$00
+00000000 = #$00
+C
+00111000 = #$38
+01000100 = #$44
+01000000 = 40
+01000000 = 40
+01000100 = 44
+00111000 = #$38
+00000000 = #$00
+00000000 = #$00
+
+
+
+
+
+$1000: 38 44 7c 44 44 44 00 00 78 44 7c 44 44 78 00 00 38 44 40 40 44 38 00 00
+
+
+	SETUP
+sta $c050		graphics mode	
+LDA #$08	
+TAX				start byte counter X = 8
+TAY				start bit counter Y = 8
+STA $FA			origin H = 0
+STA $FB			origin V = 0
+
+	LOOP
+LDA $1000,X		load byte into A
+ROR				rotate out bit
+BCS DRAWPIXEL	if bit=1, plot
+deY				decrement bits
+bne ROR			bits > 0, rotate again
+deX				decrement bytes
+bne LOOP		bytes > 0, loop
+RTS
+
+	DRAWPIXEL
+STY $FC			stash Y
+TYA	
+ADC ORIGINH
+TAY				cursor H = origin + Y
+STX $FD			stash X
+TXA	
+ADC ORIGINV		cursor V = origin + X
+plot
+LDY $FC
+LDX $FD
+RTS
+
+
+1100-   8D 50 C0    STA   $C050
+1103-   A9 08       LDA   #$08
+1105-   AA          TAX
+110A-   A9 08       LDA   #$08
+110C-   A8          TAY
+110D-   BD FF 0F    LDA   $0FFF,X
+1110-   6A          ROR
+1111-   90 03       BCC   $1116
+1113-   20 1C 11    JSR   $111C
+1116-   88          DEY
+1117-   D0 F7       BNE   $1110
+1119-   CA          DEX
+111A-   D0 EE       BNE   $110A
+111C-   85 FE       STA   $FE
+111E-   84 FC       STY   $FC
+1120-   98          TYA
+1121-   65 FA       ADC   $FA
+1123-   A8          TAY
+1124-   86 FD       STX   $FD
+1126-   8A          TXA
+1127-   65 FB       ADC   $FB
+1129-   20 00 F8    JSR   $F800
+112C-   A4 FC       LDY   $FC
+112E-   A6 FD       LDX   $FD
+1130-   A5 FE       LDA   $FE
+1132-   60          RTS
+
+
+
+
+1200-   20 32 F8    JSR   $F832
+1203-   A9 03       LDA   #$03
+1205-   20 64 F8    JSR   $F864
+1208-   A9 00       LDA   #$00
+120A-   85 FA       STA   $FA
+120C-   85 FB       STA   $FB
+120E-   20 00 11    JSR   $1100
+1211-   60          RTS
+

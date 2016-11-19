@@ -344,46 +344,6 @@ LF84F:  lda     $EB,x          ; A = $EC; A = $EB
 
 
 
-
-Changes to F000-FFFF-combined-modified.rom
-
-I assume one-bit flips either as a result of my reader being imperfect, or the ROMs suffering "bit rot" from so many years uncovered.
-
-Making my best guess. Nothing in this life is certain.
-
-
-
-        bcc     LFC16          ; FBD4 90 40 
-to 
-        bcc     LFC1A          ; FBD4 90 44
-        
-
-        jsr     LF6AE          ; F4B3 20 AE F6
-to
-        jsr     LF6AF          ; F4B3 20 AF F6 
-        
-        
-        .byte   $7C            ; F478 7C
-to
-        .byte   $7D            ; F478 7D
-    
-    
-        .byte   $E0            ; F689 E0 
-to
-        inx                    ; F689 E8 
-
-        bne     LFD87          ; FD82 D0 03
-to
-        bne     LFD86          ; FD82 D0 02
-    
-        
-?F749:  .byte   $A3            ; F749 A3                                        .
-to
-?F749:  ldx     #$00           ; F749 A2 00        
-
-
-
-
 is $1639 shift key, control key? seems to modify behavior of ASCII characters (tab, backspace, etc)
 
 320px x 200px

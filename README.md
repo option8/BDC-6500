@@ -9,6 +9,8 @@ http://www.classiccmp.org/cini/pdf/pe/1978/PE1978-Dec-pg90.pdf#page=2
 
 I was able to dump the ROMs with a handmade board (see https://github.com/option8/ROMbie) though the dumps seem to be corrupted in places. I'm not sure yet if it's the ROMs themselves or the reader.
 
+*update: The latest dumps from my rebuilt reader are cleaner and more consistent. Any weirdness that remains is likely in the ROM itself, and not a result of a bad read.*
+
 This repo is to document the disassembly of the ROMs and other findings as I get deeper into rehabbing the original BDC-6500.
 
 ## Disassembly

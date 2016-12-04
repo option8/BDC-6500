@@ -48,6 +48,7 @@
         {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [1867, 3554], "error": null, "map_width": 40, "name": "segment 2", "page_size": -1, "start_addr": 63307, "verbose_name": null}},
         {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [3554, 4089], "error": null, "map_width": 40, "name": "zeroes", "page_size": -1, "start_addr": 3554, "verbose_name": null}},
         {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [4090, 4096], "error": null, "map_width": 40, "name": "vectors", "page_size": -1, "start_addr": 65530, "verbose_name": null}},
-        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [1849, 1865], "error": null, "map_width": 40, "name": "MASK1", "page_size": -1, "start_addr": 1849, "verbose_name": null}}
+        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [1849, 1865], "error": null, "map_width": 40, "name": "MASK1", "page_size": -1, "start_addr": 1849, "verbose_name": null}},
+        {"py/object": "atrcopy.segments.DefaultSegment", "py/state": {"_order_list": null, "_rawdata_bounds": [513, 518], "error": null, "map_width": 40, "name": "???1", "page_size": -1, "start_addr": 61953, "verbose_name": null}}
     ]
 }

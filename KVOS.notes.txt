@@ -481,6 +481,46 @@ LF3E1:  ldy     #$00           ; F3E1 A0 00    	Y = 0
 						rts                    ; F401 60       	PASS 1,3 return-> F3F2; PASS 2: return->F3E8; PASS 4: return->F2B2
 
 
+Lots of one-off routines centered around $DF
+
+        ldx     #$DF           ; F239 A2 DF    	
+        jsr     LFBB0          ; F23B 20 B0 FB 	
+	
+	
+; ---------------------------------------------	
+LFBB0:  lda     $DE            ; FBB0 A5 DE    	load A from $DE
+        sta     $01,x          ; FBB2 95 01    	store at $DF+1 $E0
+        lda     $DD            ; FBB4 A5 DD    	load A from DD
+        sta     $00,x          ; FBB6 95 00    	store at $DF+0 $DF
+        rts                    ; FBB8 60       	returns with $DE->$E0, $DD->$DF 
+	
+	
+	
+        ldx     #$E3           ; FBD6 A2 E3    	
+        jsr     LFBB9          ; FBD8 20 B9 FB 	
+	
+; ---------------------------------------------	
+LFBB9:  lda     $01,x          ; FBB9 B5 01    	load A from $E3+1 $E4
+        sta     $DE            ; FBBB 85 DE    	store at $DE
+        lda     $00,x          ; FBBD B5 00    	load A from $E3
+        sta     $DD            ; FBBF 85 DD    	store at $DD
+        rts                    ; FBC1 60       	returns with $E4->DE, $E3->$DD
+
+; ----------------------------------------------------------------------------
+
+	
+        ldx     #$DF           ; FBDB A2 DF    
+        jsr     LFB94          ; FBDD 20 94 FB 
+	
+	
+LFB94:  clc                    ; FB94 18    	clear carry
+        lda     $00,x          ; FB95 B5 00 	load A from $DF
+        adc     $DD            ; FB97 65 DD 	add $DF to $DD
+        sta     $DD            ; FB99 85 DD 	store at $DD
+        lda     $01,x          ; FB9B B5 01 	load A from E0
+        adc     $DE            ; FB9D 65 DE 	add $E0 to $DE
+        sta     $DE            ; FB9F 85 DE 	store at $DE
+        rts                    ; FBA1 60    	returns with $DF+$DD, $E0+$DE
 
 
 

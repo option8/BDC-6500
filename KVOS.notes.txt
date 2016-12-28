@@ -17,6 +17,28 @@ BDC custom ROM board with
 
 
 
+
+6522 Chip registers
+        PORTB = $1580
+        PORTA = $1581
+        DDRB  = $1582
+        DDRA  = $1583
+        T1CL  = $1584
+        T1CH  = $1585
+        T1LL  = $1586
+        T1LH  = $1587
+        T2LL  = $1588
+        T2CL  = $1588
+        T2CH  = $1589
+        SR    = $158A
+        ACR   = $158B
+        PCR   = $158C
+        IFR   = $158D
+        IER   = $158E
+        ORAX  = $158F
+
+
+
 to display character bitmap:
 character (ASCII?) = A
 character length = 5
@@ -376,8 +398,21 @@ is $1639 shift key, control key? seems to modify behavior of ASCII characters (t
 320px x 200px
 ?40char? x 25lines
 
-$EB = text X coord?
+$EB = text horiz coord?
 
+carriage return:
+CR:     lda     #$00           ; F65A A9 00                                     ..
+        bit     $1639          ; F65C 2C 39 16                                  ,9.
+        bmi     LF664          ; F65F 30 03                                     0.
+        sta     $EB            ; F661 85 EB                                     ..
+        rts                    ; F663 60                                        `
+
+; ----------------------------------------------------------------------------
+LF664:  sta     $ED            ; F664 85 ED                                     ..
+        sta     $EE            ; F666 85 EE                                     ..
+RETURN: rts                    ; F668 60                                        `
+
+$ED/$EE = bit horiz coord hi/low?
 
 
 
@@ -521,6 +556,32 @@ LFB94:  clc                    ; FB94 18    	clear carry
         adc     $DE            ; FB9D 65 DE 	add $E0 to $DE
         sta     $DE            ; FB9F 85 DE 	store at $DE
         rts                    ; FBA1 60    	returns with $DF+$DD, $E0+$DE
+
+
+TAB:    cmp     #$09           ; F62B C9 09    	if TAB
+        bne     FFEED          ; F62D D0 6B    	else, check for form feed
+DO TAB: bit     $1639          ; F62F 2C 39 16 	if shift key? control key? mode?
+        bmi     LF63C          ; F632 30 08    	
+        clc                    ; F634 18       	otherwise... clear carry
+        lda     $EB            ; F635 A5 EB    	load A from horiz char position
+        adc     #$06           ; F637 69 06    	add 6 to horiz char
+        sta     $EB            ; F639 85 EB    	store new horiz char
+        rts                    ; F63B 60       	return
+
+
+LF63C:  lda     $ED            ; F63C A5 ED		load A from horiz byte
+        clc                    ; F63E 18   		clear carry
+        adc     #$06           ; F63F 69 06		add 6 to horiz byte
+        sta     $ED            ; F641 85 ED		set horiz byte
+        bcc     LF647          ; F643 90 02		
+        inc     $EE            ; F645 E6 EE		if overflowed, increment horiz byte hi
+LF647:  sec                    ; F647 38   		set carry
+        sbc     #$3B           ; F648 E9 3B		subtract 60 from A (horiz byte) if A>60, carry bit set
+        lda     $EE            ; F64A A5 EE		load A from horiz byte hi
+        sbc     #$01           ; F64C E9 01		decrement by 1 if A>60, by 0 if A<60
+        bcc     RETURN2        ; F64E 90 03		return on carry clear
+        jmp     DO CANCEL      ; F650 4C BD F5 	
+
 
 
 

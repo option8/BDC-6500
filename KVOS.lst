@@ -1,5 +1,5 @@
 ; da65 V2.15
-; Created:    2016-12-04 11:51:53
+; Created:    2016-12-05 18:41:22
 ; Input file: F000-FFFF-combined-modified.rom
 ; Page:       1
 
@@ -14,7 +14,22 @@ T3LB            := $00E9       ; A7
 T3HB            := $00EA       ; BF
 SCRNLO          := $00FB       ; SCREEN POSITION LOW BYTE
 SCRNHI          := $00FC       ; SCREEN POSITION HIGH BYTE
-6522IO          := $1580       ; 6522 VIA I/O registers
+6522-PORTB      := $1580
+6522-PORTA      := $1581
+6522-DDRB       := $1582
+6522-DDRA       := $1583
+6522-T1CL       := $1584
+6522-T1CH       := $1585
+6522-T1LL       := $1586
+6522-T1LH       := $1587
+6522-T2LL       := $1588
+6522-T2CH       := $1589
+6522-SR         := $158A
+6522-ACR        := $158B
+6522-PCR        := $158C
+6522-IFR        := $158D
+6522-IER        := $158E
+6522-ORA        := $158F
 JUMP TABLE      := $1600       ; JUMP TABLE
 L1602           := $1602
 L1604           := $1604
@@ -769,12 +784,14 @@ CR:     adc     #$20           ; F654 69 20                                     
         bne     BACKSPACE      ; F658 D0 1D                                     ..
 CR:     lda     #$00           ; F65A A9 00                                     ..
         bit     $1639          ; F65C 2C 39 16                                  ,9.
-        bmi     LF664          ; F65F 30 03                                     0.
+        bmi     EDEEto00       ; F65F 30 03                                     0.
         sta     $EB            ; F661 85 EB                                     ..
         rts                    ; F663 60                                        `
 
 ; ----------------------------------------------------------------------------
-LF664:  sta     $ED            ; F664 85 ED                                     ..
+; returns with $ED EE->#$00.
+EDEEto00:
+        sta     $ED            ; F664 85 ED                                     ..
         sta     $EE            ; F666 85 EE                                     ..
 RETURN: rts                    ; F668 60                                        `
 
@@ -886,7 +903,7 @@ LF715:  ldy     #$00           ; F715 A0 00                                     
         and     (SCRNLO),y     ; F71C 31 FB                                     1.
         ora     $F5            ; F71E 05 F5                                     ..
         sta     (SCRNLO),y     ; F720 91 FB                                     ..
-        lda     LF741,x        ; F722 BD 41 F7                                  .A.
+        lda     MASK2,x        ; F722 BD 41 F7                                  .A.
         iny                    ; F725 C8                                        .
         and     (SCRNLO),y     ; F726 31 FB                                     1.
         ora     $F6            ; F728 05 F6                                     ..
@@ -903,7 +920,8 @@ LF737:  dey                    ; F737 88                                        
 ; ----------------------------------------------------------------------------
 ; BIT MASK TABLE
 MASK1:  .byte   $03,$81,$C0,$E0,$F0,$F8,$FC,$FE; F739 03 81 C0 E0 F0 F8 FC FE   ........
-LF741:  .byte   $FF,$FF,$FF,$7F,$3F,$1F,$0F,$07; F741 FF FF FF 7F 3F 1F 0F 07   ....?...
+; BIT MASK TABLE
+MASK2:  .byte   $FF,$FF,$FF,$7F,$3F,$1F,$0F,$07; F741 FF FF FF 7F 3F 1F 0F 07   ....?...
 ; ----------------------------------------------------------------------------
 LF749:  ldx     #$00           ; F749 A2 00                                     ..
         stx     $F6            ; F74B 86 F6                                     ..
@@ -1103,7 +1121,7 @@ LF886:  rts                    ; F886 60                                        
 ; ----------------------------------------------------------------------------
 LF887:  jsr     LF85B          ; F887 20 5B F8                                   [.
 LF88A:  ldy     $FD            ; F88A A4 FD                                     ..
-        lda     MASK2,y        ; F88C B9 A2 F8                                  ...
+        lda     MASK3,y        ; F88C B9 A2 F8                                  ...
         ldy     #$00           ; F88F A0 00                                     ..
         bit     $FA            ; F891 24 FA                                     $.
         bvc     INVERT         ; F893 50 06                                     P.
@@ -1120,7 +1138,7 @@ INVERT: eor     #$FF           ; F89B 49 FF                                     
 
 ; ----------------------------------------------------------------------------
 ; BIT MASK TABLE
-MASK2:  .byte   $80,$40,$20,$10,$08,$04,$02,$01; F8A2 80 40 20 10 08 04 02 01   .@ .....
+MASK3:  .byte   $80,$40,$20,$10,$08,$04,$02,$01; F8A2 80 40 20 10 08 04 02 01   .@ .....
 ; ----------------------------------------------------------------------------
 LF8AA:  jsr     UP1LINE        ; F8AA 20 6F F8                                   o.
         jmp     LF88A          ; F8AD 4C 8A F8                                  L..
@@ -1661,11 +1679,11 @@ LFC1A:  cld                    ; FC1A D8                                        
         ldx     #$FF           ; FC1C A2 FF                                     ..
         txs                    ; FC1E 9A                                        .
         lda     #$00           ; FC1F A9 00                                     ..
-        sta     6522IO+$03     ; FC21 8D 83 15                                  ...
-        lda     6522IO+$0C     ; FC24 AD 8C 15                                  ...
+        sta     6522-DDRA      ; FC21 8D 83 15                                  ...
+        lda     6522-PCR       ; FC24 AD 8C 15                                  ...
         and     #$F0           ; FC27 29 F0                                     ).
         ora     $0E            ; FC29 05 0E                                     ..
-        sta     6522IO+$0C     ; FC2B 8D 8C 15                                  ...
+        sta     6522-PCR       ; FC2B 8D 8C 15                                  ...
 LFC2E:  jsr     LFC7F          ; FC2E 20 7F FC                                   ..
         cmp     #$58           ; FC31 C9 58                                     .X
         bne     LFC2E          ; FC33 D0 F9                                     ..
@@ -1704,17 +1722,17 @@ LFC74:  inc     $02            ; FC74 E6 02                                     
         jmp     (L0004)        ; FC7C 6C 04 00                                  l..
 
 ; ----------------------------------------------------------------------------
-LFC7F:  lda     6522IO+$0D     ; FC7F AD 8D 15                                  ...
+LFC7F:  lda     6522-IFR       ; FC7F AD 8D 15                                  ...
         and     #$02           ; FC82 29 02                                     ).
         beq     LFC7F          ; FC84 F0 F9                                     ..
-        lda     6522IO+$01     ; FC86 AD 81 15                                  ...
+        lda     6522-PORTA     ; FC86 AD 81 15                                  ...
         pha                    ; FC89 48                                        H
-        lda     6522IO+$0C     ; FC8A AD 8C 15                                  ...
+        lda     6522-PCR       ; FC8A AD 8C 15                                  ...
         and     #$F0           ; FC8D 29 F0                                     ).
         ora     #$0C           ; FC8F 09 0C                                     ..
-        sta     6522IO+$0C     ; FC91 8D 8C 15                                  ...
+        sta     6522-PCR       ; FC91 8D 8C 15                                  ...
         ora     #$0E           ; FC94 09 0E                                     ..
-        sta     6522IO+$0C     ; FC96 8D 8C 15                                  ...
+        sta     6522-PCR       ; FC96 8D 8C 15                                  ...
         pla                    ; FC99 68                                        h
         rts                    ; FC9A 60                                        `
 
@@ -1724,13 +1742,13 @@ LFC9B:  cld                    ; FC9B D8                                        
         txs                    ; FC9E 9A                                        .
         sei                    ; FC9F 78                                        x
         lda     #$00           ; FCA0 A9 00                                     ..
-        sta     6522IO         ; FCA2 8D 80 15                                  ...
-        sta     6522IO+$0E     ; FCA5 8D 8E 15                                  ...
-        sta     6522IO+$03     ; FCA8 8D 83 15                                  ...
+        sta     6522-PORTB     ; FCA2 8D 80 15                                  ...
+        sta     6522-IER       ; FCA5 8D 8E 15                                  ...
+        sta     6522-DDRA      ; FCA8 8D 83 15                                  ...
         lda     #$EE           ; FCAB A9 EE                                     ..
-        sta     6522IO+$0C     ; FCAD 8D 8C 15                                  ...
+        sta     6522-PCR       ; FCAD 8D 8C 15                                  ...
         lda     #$FF           ; FCB0 A9 FF                                     ..
-        sta     6522IO+$02     ; FCB2 8D 82 15                                  ...
+        sta     6522-DDRB      ; FCB2 8D 82 15                                  ...
         lda     #$00           ; FCB5 A9 00                                     ..
         sta     $06            ; FCB7 85 06                                     ..
         sta     $08            ; FCB9 85 08                                     ..
@@ -1860,18 +1878,18 @@ LFD86:  lda     $08            ; FD86 A5 08                                     
 LFD9A:  rts                    ; FD9A 60                                        `
 
 ; ----------------------------------------------------------------------------
-LFD9B:  lda     6522IO+$0D     ; FD9B AD 8D 15                                  ...
+LFD9B:  lda     6522-IFR       ; FD9B AD 8D 15                                  ...
         sec                    ; FD9E 38                                        8
         and     #$02           ; FD9F 29 02                                     ).
         beq     LFDB8          ; FDA1 F0 15                                     ..
-        lda     6522IO+$01     ; FDA3 AD 81 15                                  ...
+        lda     6522-PORTA     ; FDA3 AD 81 15                                  ...
         pha                    ; FDA6 48                                        H
-        lda     6522IO+$0C     ; FDA7 AD 8C 15                                  ...
+        lda     6522-PCR       ; FDA7 AD 8C 15                                  ...
         and     #$F0           ; FDAA 29 F0                                     ).
         ora     #$0C           ; FDAC 09 0C                                     ..
-        sta     6522IO+$0C     ; FDAE 8D 8C 15                                  ...
+        sta     6522-PCR       ; FDAE 8D 8C 15                                  ...
         ora     #$0E           ; FDB1 09 0E                                     ..
-        sta     6522IO+$0C     ; FDB3 8D 8C 15                                  ...
+        sta     6522-PCR       ; FDB3 8D 8C 15                                  ...
         pla                    ; FDB6 68                                        h
         clc                    ; FDB7 18                                        .
 LFDB8:  rts                    ; FDB8 60                                        `
@@ -1881,17 +1899,17 @@ LFDB9:  pha                    ; FDB9 48                                        
         sec                    ; FDBA 38                                        8
         bit     $0E            ; FDBB 24 0E                                     $.
         bmi     LFDD5          ; FDBD 30 16                                     0.
-        sta     6522IO         ; FDBF 8D 80 15                                  ...
-        lda     6522IO+$0C     ; FDC2 AD 8C 15                                  ...
+        sta     6522-PORTB     ; FDBF 8D 80 15                                  ...
+        lda     6522-PCR       ; FDC2 AD 8C 15                                  ...
         and     #$0F           ; FDC5 29 0F                                     ).
         ora     #$C0           ; FDC7 09 C0                                     ..
-        sta     6522IO+$0C     ; FDC9 8D 8C 15                                  ...
+        sta     6522-PCR       ; FDC9 8D 8C 15                                  ...
         ora     #$E0           ; FDCC 09 E0                                     ..
-        sta     6522IO+$0C     ; FDCE 8D 8C 15                                  ...
+        sta     6522-PCR       ; FDCE 8D 8C 15                                  ...
         sec                    ; FDD1 38                                        8
         ror     $0E            ; FDD2 66 0E                                     f.
         clc                    ; FDD4 18                                        .
-LFDD5:  lda     6522IO+$0D     ; FDD5 AD 8D 15                                  ...
+LFDD5:  lda     6522-IFR       ; FDD5 AD 8D 15                                  ...
         and     #$11           ; FDD8 29 11                                     ).
         beq     LFDE0          ; FDDA F0 04                                     ..
         lda     #$00           ; FDDC A9 00                                     ..

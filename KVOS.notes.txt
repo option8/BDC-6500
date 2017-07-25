@@ -1,10 +1,103 @@
-SCRATCHPAD:
+BACKGROUND
+I acquired the BDC-6500 Computer from an estate sale. It was built and owned by a man we'll call Bruce (BDC were his initials)
+I originally went to the sale looking for Bruce's Apple II, but the Thunderclock batteries inside had leaked so badly, the II was beyond salvage. So I settled for the BDC and a Vectrex (now with its new owner, Burger Becky)
+Upon opening the BDC, I could see it was a customized KIM-1 system. There were four boards attached to a passive backplane:
+ - the CPU board (the KIM-1 itself)
+ - a 16K memory expansion
+ - an 8K "Visable" memory expansion
+ - and a wire wrapped prototyping board with some interesting chips on it. 
+ Many of these, I have yet to identify. Possibly a 6502 single board system in its own right. At the very least, it has some RAM and ROMs
+ 
+ And this was written on the ROMS.
+
+KVOS  
+
+So I went about dumping those ROMs, at the same time researching what I could about Bruce and KVOS, and learning a great deal about the KIM-1
+
+I built a simple ROM reader with a Teensy Arduino clone (my microcontroller of choice) and was able to, after some tweaks to the hardware, get a solid, consistent read off them
+
+I opened the result in the new tool Omnivore, which, along with reading and building Atari JumpMan levels, is a decent 6502 disassembler.
+
+I also learned what a disassembler is.
+
+Omnivore has the unique ability to show a visible bitmap of the ROM alongside the hex and disassembly. With that, I was able to find patterns in the portions of the ROM that disassembled as gibberish. 
+
+See if you can spot what I did.
+
+That's letters. The alphabet. ASCII characters. 
+
+ - Most exciting and visually interesting is the Character portion of the ROM.
+
+"A" character bytes
+  012 34567	
+0 ... X...X
+1 X.. X...X
+2 .X. X...X
+3 .XX XXXXX
+4 X.. X...X
+
+"A" bitmap
+.XX X.	first 3 bits of byte +3, first 2 bits of byte +4
+X.. .X	first 3 bits of byte +1, first 2 bits of byte +2
+X...X	bits 3-7 of byte +4...
+XXXXX		+3
+X...X		+2
+X...X		+1
+X...X		+0
+
+
+Then I looked to the code. I looked around for an interactive disassembler for 6502 that would let me label and comment on things on the fly. Omnivore works well in this regard, but it's still crashy and and (at first) had a habit of losing my work.
+
+So I asked around and got recommendations for da65, a command-line disassembler that takes a sidecar "info" file for directives while disassembling.
+
+And this is what the info file looks like.
+
+It produces a listing that looks like this. Suitable for assembly with a variety of 6502 assemblers, complete with comments, labels
+
+So, what have I found so far?
+
+ - 6502 Reset vectors in the right places.
+
+ - Plenty of routines for checking an input against a set of commands (if input == R, W, etc)
+but no idea where that input is coming from. A TTY keyboard? connected through a VIA chip?
+
+ - Routines for moving around on the VM screen, placing characters.
+but no reference to the address of the characters in ROM that I could find. 
+
+ - References to jump tables
+ but nothing that populates them. Am I missing some ROMs? 
+ 
+
+ - learned a great deal about 65xx hardware design, assembly language
 
 
 
-KIM-1 with 
-	6530-002 at
-	6530-003 at
+
+QUESTIONS (oh, so many questions)
+
+Is it Homebrew? (a Bruce original work?)
+Is it Complete? (would it run as-is, if properly emulated?)
+Are the ROMs clean (or are there chunks missing/dirty with age?)
+What does KVOS stand for? (KIM Visible OS? Keyboard Video OS? Knights Vilifying Operatic Sparrows?)
+Is a taco a sandwich?
+
+Technical bits
+How and where are the jump table addresses at $160x set up? do they lead to some of the unreachable subroutines like F43C?
+Where do we actually load character bytes from, and where do they get written to the bitmap display?
+What hardware do we need, if we were to try and emulate it (16K board, 8K Visable Memory, 6530?)
+What was the intended input? TTY keyboard? Are the IO addresses consistent with that?
+
+
+
+
+
+
+
+HARDWARE:
+
+KIM-1 with RAM 0000 to 03FF
+	6530-002 at 1740-177F/17C0-17FF/1C00-1FFF
+	6530-003 at 1700-173F/1780-17BF/1800-1BFF
 
 6522 at $1580
 
@@ -23,11 +116,79 @@ BDC custom ROM board with
 	6532 at
 	6530 ???
 
+                                                                        ¦
+  +-------------------------------------------------------------------->¦
+  ¦       ¦        ¦        ¦        ¦        ¦         ¦         ¦     ¦
++---+ +------+ +------+ +------+ +------+ +-------+ +-------+ +------+  ¦
+¦   ¦ ¦ 1024 ¦ ¦ 1024 ¦ ¦  64  ¦ ¦  64  ¦ ¦ I/O 8 ¦ ¦ I/O 8 ¦ ¦ 1024 ¦  ¦
+¦   ¦ ¦      ¦ ¦      ¦ ¦      ¦ ¦      ¦ ¦       ¦ ¦       ¦ ¦      ¦  ¦ E
+¦   ¦ ¦ BYTE ¦ ¦ BYTE ¦ ¦ BYTE ¦ ¦ BYTE ¦ ¦ TIMER ¦ ¦ TIMER ¦ ¦ BYTE ¦  ¦ X
+¦   ¦ ¦      ¦ ¦      ¦ ¦      ¦ ¦      ¦ ¦       ¦ ¦       ¦ ¦      ¦  ¦ P
+¦   ¦ ¦ ROM  ¦ ¦ ROM  ¦ ¦ RAM  ¦ ¦ RAM  ¦ ¦       ¦ ¦       ¦ ¦ RAM  ¦  ¦ P
+¦ 6 ¦ +------¦ +------¦ +------¦ +------¦ +-------¦ +-------¦ +------¦  ¦ A
+¦ 5 ¦ ¦ 1FFF ¦ ¦ 1BFF ¦ ¦ 17FF ¦ ¦ 17BF ¦ ¦ 177F  ¦ ¦ 173F  ¦ ¦ 03FF ¦  ¦ N
+¦ 0 ¦ ¦      ¦ ¦      ¦ ¦      ¦ ¦      ¦ ¦       ¦ ¦       ¦ ¦      ¦  ¦ S
+¦ 2 ¦ ¦  TO  ¦ ¦  TO  ¦ ¦  TO  ¦ ¦  TO  ¦ ¦  TO   ¦ ¦  TO   ¦ ¦  TO  ¦  ¦ I
+¦   ¦ ¦      ¦ ¦      ¦ ¦      ¦ ¦      ¦ ¦       ¦ ¦       ¦ ¦      ¦  ¦ O
+¦   ¦ ¦ 1C00 ¦ ¦ 1800 ¦ ¦ 17C0 ¦ ¦ 1780 ¦ ¦ 1740  ¦ ¦ 1700  ¦ ¦ 0000 ¦  ¦ N
+¦   ¦ +------¦ +------¦ +------¦ +------¦ +-------¦ +-------¦ +------¦  ¦
+¦   ¦ ¦ 6530 ¦ ¦ 6530 ¦ ¦ 6530 ¦ ¦ 6530 ¦ ¦ 6530  ¦ ¦ 6530  ¦ ¦  8x  ¦  ¦
+¦   ¦ ¦ -002 ¦ ¦ -003 ¦ ¦ -002 ¦ ¦ -003 ¦ ¦ -002  ¦ ¦ -003  ¦ ¦ 6102 ¦  ¦
++---+ +------+ +------+ +------+ +------+ +-------+ +-------+ +------+  ¦
+  ¦       ¦        ¦        ¦        ¦        ¦         ¦         ¦     ¦
+  +-------------------------------------------------------------------->¦
+                                                                        ¦
+
++------------------------------------------------------------------------+
+| ADDRESS |      AREA      | LABEL |              FUNCTION               |
+|         |                |       |                                     |
+|  00EF   |                | PCL   | Program Counter - Low Order Byte    |
+|  00F0   |                | PGH   | Program Counter - High Order Byte   |
+|  00F1   |     Machine    | P     | Status Register                     |
+|  00F2   |     Register   | SF    | Stack Pointer                       |
+|         |     Storage    |       |                                     |
+|  00F3   |     Buffer     | A     | Accumulator                         |
+|  00F4   |                | Y     | Y-Index Register                    |
+|  00F5   |                | X     | X-Index Register                    |
++---------+----------------+-------+-------------------------------------|
+|  1700   |                | PAD   | 6530-003 A Data Register            |
+|  1701   |   Application  | PADD  | 6530-003 A Data Direction Register  |
+|  1702   |        I/O     | PBD   | 6530-003 B Data Register            |
+|  1703   |                | PBDD  | 6530-003 B Data Direction Register  |
++---------+----------------+-------+-------------------------------------|
+|  1704   |                |       | 6530-003 Interval Timer             |
+|         | Interval Timer |       |   (See Section 1.6 of               |
+|         |                |       |    Hardware Manual)                 |
+|  170F   |                |       |                                     |
++---------+----------------+-------+-------------------------------------|
+|  17F5   |                | SAL   | Starting Address - Low Order Byte   |
+|  17F6   |   Audio Tape   | SAH   | Starting Address - High Order Byte  |
+|  17F7   |   Load & Dump  | EAL   | Ending Address - Low Order Byte     |
+|  17F8   |                | EAH   | Ending Address - High Order Byte    |
+|  17F9   |                | ID    | File Identification Number          |
++---------+----------------+-------+-------------------------------------|
+|  l7FA   |                | NMIL  | NMI Vector - Low Order Byte         |
+|  l7FB   |                | NMIH  | NMI Vector - High Order Byte        |
+|  l7FC   |   Interrupt    | RSTL  | RST Vector - Low Order Byte         |
+|         |    Vectors     |       |                                     |
+|  17FD   |                | RSTH  | RST Vector - High Order Byte        |
+|  l7FE   |                | IRQL  | IRQ Vector - Low Order Byte         |
+|  17FF   |                | IRQH  | IRQ Vector - High Order Byte        |
++---------+----------------+-------+-------------------------------------|
+|  1800   |                | DUMPT | Start Address - Audio Tape Dump     |
+|         |  Audio Tape    |       |                                     |
+|  1873   |                | LOADT | Start Address - Audio Tape Load     |
++---------+----------------+-------+-------------------------------------|
+|  1C00   | STOP Key + SST |       | Start Address for NMI using KIM     |
+|         |                |       | "Save Machine" Routine (Load in     |
+|         |                |       | 17FA & 17FB)                        |
++---------+----------------+-------+-------------------------------------|
+|  17F7   |   Paper Tape   | EAL   | Ending Address - Low Order Byte     |
+|  17F8   |    Dump (Q)    | EAH   | Ending Address - High Order Byte    |
++------------------------------------------------------------------------+
 
 
 
-QUESTIONS (oh, so many questions)
-How and where are the jump table addresses at $160x set up? do they lead to some of the unreachable subroutines like F43C?
 
 
 
@@ -38,7 +199,7 @@ How and where are the jump table addresses at $160x set up? do they lead to some
 
 VIA INTERNAL REGISTERS
 
- One VIA chip has 16 internal registers used to control its many features.
+One VIA chip has 16 internal registers used to control its many features.
 These registers occupy 16 consecutive addresses in RAM. The following table
 gives the offsets of each VIA register. All registers are 8-bit:
 
@@ -187,9 +348,6 @@ LF94A:  asl     a              ; multiply by 2 =#$C8 (200)
 $1600 - $1613 jump table
 
 
-So much happening at 1630 range, i wonder if the references to 1730 are glitches.
-
-
 $F1E2 (T1)
 JSR to $F3A8 (check data table 2 location has been set)
 if zero (location unset)
@@ -250,7 +408,7 @@ $F5
 #	TMPX    =     $FD
 #	CHAR    =     $FE
 #	MODE    =     $FF
-
+(where did this come from?)
 
 
 

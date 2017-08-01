@@ -23,3 +23,6 @@ http://retroconnector.com/bdc-6500-computer-kim-1/
 ## Character ROM
 I've recreated the KVOS font from the character section of the ROM. Bitmaps of the full ASCII set are in the "Character ROM" directory. 
 
+## KansasFest 2017
+A quick presentation on my findings and the background on KVOS, presented at KansasFest 2017, is available here:
+https://archive.org/details/2017_Kfest_Disassembling_KVOS

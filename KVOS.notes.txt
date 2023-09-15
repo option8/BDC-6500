@@ -1,3 +1,6 @@
+
+
+
 BACKGROUND
 I acquired the BDC-6500 Computer from an estate sale. It was built and owned by a man we'll call Bruce (BDC were his initials)
 I originally went to the sale looking for Bruce's Apple II, but the Thunderclock batteries inside had leaked so badly, the II was beyond salvage. So I settled for the BDC and a Vectrex (now with its new owner, Burger Becky)
@@ -103,6 +106,17 @@ KIM-1 with RAM 0000 to 03FF
 
 MTU 16K Memory at $2000-$5FFF
 MTU Visable Memory 8k at $6000-7FFF
+
+320 px per line = 40 bytes, 8 bit wide chars
+200 lines = 20 x 10px tall chars. ???
+
+*** 
+400 bytes = 1 line of 8x10px characters
+
+why is so much writing to 2000, and only looping if it gets to 8000?
+some kind of buffer/scrollback?
+
+
 	320x200px top left to lower right, 
 	TEXT 40 COLUMNS of 8px wide text chars. 25 LINES 8px tall (40x25=1000, so $3E8 chars)
 	PIXELS 40 bytes wide (320 bits wide * 200 bits high = 64000 bits, $FA00 bits)
@@ -113,7 +127,32 @@ MTU Visable Memory 8k at $6000-7FFF
 
 
 BDC custom ROM board with 
-	6532 at
+	6532 at $1600? 128 bytes RAM ($7F starting ???)
+	
+0	Data register A
+1	Data Direction register A
+2	Data register B
+3	Data Direction register B
+4	Read Timer/Disable Interrupt
+5	R Interrupt flag register, W disable interrupt
+6	W enable interrupt
+7	W enable Interrupt
+
+C	Read timer
+
+14	Write timer
+15	Write timer
+16	Write timer
+17	Write timer
+
+1C	Write timer
+1D	Write timer
+1E	Write timer
+1F	Write timer
+
+L1612
+L1670,x
+	
 	6530 ???
 
                                                                         ¦
@@ -188,9 +227,14 @@ BDC custom ROM board with
 +------------------------------------------------------------------------+
 
 
-
-
-
+The IRQ vector is stored in locations 17FE and 17FF.
+00EF = PCL
+00F0 = PCH
+00F1 = Status Register (P)
+00F2 = Stack Pointer (SP)
+00F3 = Accumulator (A)
+00F4 = Y Index Register
+00F5 = X Index Register
 
 
 
@@ -224,23 +268,303 @@ offset no.
  15             ORA or IRA      Identical to offset 1 but no handshake
 
 6522 Chip registers
-        PORTB = $1580
-        PORTA = $1581
-        DDRB  = $1582
-        DDRA  = $1583
-        T1CL  = $1584
-        T1CH  = $1585
-        T1LL  = $1586
-        T1LH  = $1587
-        T2LL  = $1588
-        T2CL  = $1588
-        T2CH  = $1589
-        SR    = $158A
-        ACR   = $158B
-        PCR   = $158C
-        IFR   = $158D
-        IER   = $158E
-        ORAX  = $158F
+        PORTB = $1580			Output or input register B	
+        PORTA = $1581			Output or input register A
+        DDRB  = $1582			Data direction register B	
+        DDRA  = $1583			Data direction register A	
+        T1CL  = $1584			T1 low-byte latch or T1 low-byte counter	
+        T1CH  = $1585			T1 high-byte counter	
+        T1LL  = $1586			T1 low-byte latch	
+        T1LH  = $1587			T1 high-byte latch	
+        T2LL  = $1588			T2 low-byte latch or T2 low-byte counter	
+        T2CH  = $1589			T2 high-byte counter	
+        SR    = $158A			Shift Register	
+        ACR   = $158B			Auxiliary Control Register	
+        PCR   = $158C			Peripheral Control Register	
+        IFR   = $158D			Interrupt Flag Register			peripheral control register: 
+        IER   = $158E			Interrupt Enable Register			bit 7 hi when interrupt available. 
+        ORAX  = $158F			Identical to offset 1 but no handshake	
+					
+
+
+
+On RESET: 
+RESET:  cld                    ; FC00 D8      
+        ldx     #$FF           ; FC01 A2 FF   		FF into X
+        txs                    ; FC03 9A      		FF into stack Pointer
+        lda     #$00           ; FC04 A9 00   		00 into A
+        sta     6530PADD       ; FC06 8D 01 17		6530 data direction. 00=read?
+        lda     6530IO         ; FC09 AD 00 17		6530 data register - 1 byte from 6530
+        bpl     LFC14          ; FC0C 10 06   		if no hi bit set, reset KIM?
+        asl     a              ; FC0E 0A      
+        sta     $0F            ; FC0F 85 0F   
+LFC11:  jmp     RESET2         ; FC11 4C 9B FC
+
+
+0F = mode? 
+00 - store input to $2000
+80 - 
+
+
+LFC14:  asl     a              ; FC14 0A           shift the 6530 data left.
+LFC15:  .byte   $10            ; FC15 10           ???
+LFC16:  .byte   $03            ; FC16 03           ???
+
+; DOES KIM RESET
+KIMRESET:
+        jmp     KIMRST         ; FC17 4C 22 1C     1C22 resets the KIM - in the 6530-002
+
+
+
+
+this looks like it takes a startup command like X---efabcd
+
+first three characters after X are ignored.
+
+E F bytes stored in $04, $05
+A B C D bytes stored in $00 $01 $02 $03
+
+byte C ($02) subtracted from 0, stored back in $02
+byte D ($03) subtracted from 0, stored back in $03
+
+bytes loaded from IO, stored at address set in A,B. Loops until CxD bytes read.
+when done, jumps to address in E,F.
+
+"load the program with entry point EF, starting at AB, length CD"
+
+FC1A	        cld                    ;  D8        
+FC1B	        sei                    ;  78        
+FC1C	        ldx     #$FF           ;  A2 FF     
+FC1E	        txs                    ;  9A        
+FC1F	        lda     #$00           ;  A9 00     
+FC21	        sta     6522-DDRA      ;  8D 83 15  
+FC24	        lda     6522-PCR       ;  AD 8C 15  
+FC27	        and     #$F0           ;  29 F0     
+FC29	        ora     $0E            ;  05 0E     
+FC2B	        sta     6522-PCR       ;  8D 8C 15  
+FC2E	LFC2E:  jsr     WAITFORIO      ;  20 7F FC  
+FC31	        cmp     #$58           ;  C9 58     
+FC33	        bne     LFC2E          ;  D0 F9     
+FC35	        jsr     WAITFORIO      ;  20 7F FC  
+FC38	        jsr     WAITFORIO      ;  20 7F FC  
+FC3B	LFC3B:  jsr     WAITFORIO      ;  20 7F FC  
+FC3E	        jsr     WAITFORIO      ;  20 7F FC  
+FC41	        sta     L0004          ;  85 04     
+FC43	        jsr     WAITFORIO      ;  20 7F FC  
+FC46	        sta     $05            ;  85 05     
+FC48	        jsr     WAITFORIO      ;  20 7F FC  
+FC4B	        sta     $00            ;  85 00     
+FC4D	        jsr     WAITFORIO      ;  20 7F FC  
+FC50	        sta     $01            ;  85 01     
+FC52	        jsr     WAITFORIO      ;  20 7F FC  
+FC55	        sta     $02            ;  85 02     
+FC57	        jsr     WAITFORIO      ;  20 7F FC  
+FC5A	        sta     $03            ;  85 03     
+FC5C	        ldx     #$00           ;  A2 00     
+FC5E	        txa                    ;  8A        
+FC5F	LFC5F:  sec                    ;  38        
+FC60	        sbc     $02            ;  E5 02     
+FC62	        sta     $02            ;  85 02     
+FC64	        txa                    ;  8A        
+FC65	        sbc     $03            ;  E5 03     
+FC67	        sta     $03            ;  85 03     
+FC69	LFC69:  jsr     WAITFORIO      ;  20 7F FC  
+FC6C	        sta     ($00,x)        ;  81 00     
+FC6E	        inc     $00            ;  E6 00     
+FC70	        bne     LFC74          ;  D0 02     
+FC72	        inc     $01            ;  E6 01     
+FC74	LFC74:  inc     $02            ;  E6 02     
+FC76	        bne     LFC69          ;  D0 F1     
+FC78	        inc     $03            ;  E6 03     
+FC7A	        bne     LFC69          ;  D0 ED     
+FC7C	        jmp     (L0004)        ;  6C 04 00  
+
+; ----------------------------------------------------------------------------
+; LOOPS UNTIL INPUT ON 6522. INTERRUPT FLAG BIT 1 SET ON IO AT 6522 PORTA
+WAITFORIO:
+
+FC7F        lda     6522-IFR       ;  AD 8D 15  
+FC82        and     #$02           ;  29 02     
+FC84        beq     WAITFORIO      ;  F0 F9     
+FC86        lda     6522-INPUTA    ;  AD 81 15  
+FC89        pha                    ;  48        
+FC8A        lda     6522-PCR       ;  AD 8C 15  
+FC8D        and     #$F0           ;  29 F0     
+FC8F        ora     #$0C           ;  09 0C     
+FC91        sta     6522-PCR       ;  8D 8C 15  
+FC94        ora     #$0E           ;  09 0E     
+FC96        sta     6522-PCR       ;  8D 8C 15  
+FC99        pla                    ;  68        
+FC9A        rts                    ;  60        
+
+
+
+ASCII character in A
+
+LF6AC:  bit     L1640          ; F6AC 2C 40 16       check bit 6 of 1640       
+        bvc     LF6B4          ; F6AF 50 03          if bit6 on, jump to (1608)       
+        jmp     (JUMP 1608)		; F6B1 6C 08 16 
+
+LF6B4:  stx     XTMP1          ; F6B4 8E 49 BF  	otherwise, stash X and Y
+        sty     YTMP1          ; F6B7 8C 4A BF  
+        and     #$7F           ; F6BA 29 7F     	clear high bit from Accumulator
+        sec                    ; F6BC 38        	
+        sbc     #$20           ; F6BD E9 20     	subtract $20 
+        bcc     CR             ; F6BF 90 93     	<32 is a control char, do a CR
+        sta     L00F7          ; F6C1 85 F7     	stash result in F7
+        jsr     LF8EB          ; F6C3 20 EB F8  	something with cursor position?
+        lda     L00F7          ; F6C6 A5 F7     	get result back.
+        sta     SRC-LO         ; F6C8 85 F1     	store ASCII-32 in $F1
+        ldy     #$F0           ; F6CA A0 F0     	Y=F0
+        asl     a              ; F6CC 0A        	ASCII-32 * 4
+        asl     a              ; F6CD 0A        
+        bcc     LF6D2          ; F6CE 90 02     	if < 64 skip
+        iny                    ; F6D0 C8        	else, Y=F1
+        clc                    ; F6D1 18        
+LF6D2:  adc     SRC-LO         ; F6D2 65 F1     	ASCII-32*5
+        sta     SRC-LO         ; F6D4 85 F1     	store in F1
+        bcc     LF6D9          ; F6D6 90 01     	if > ?
+        iny                    ; F6D8 C8        	else y=F1
+LF6D9:  sty     SRC-HI         ; F6D9 84 F2     	Y into $F2
+        ldy     #$00           ; F6DB A0 00     	Y=0
+        sty     L00FA          ; F6DD 84 FA     	$FA=0 - loop counter?
+        lda     (SRC-LO),y     ; F6DF B1 F1     	(character first byte) into ACC
+        sta     L00F4          ; F6E1 85 F4     	(character first byte) into F4
+        bmi     DISPLAYCHAR    ; F6E3 30 0C     	high bit set - has descender - DISPLAYCHAR
+        sty     L00F5          ; F6E5 84 F5     	Y=0
+        sty     L00F6          ; F6E7 84 F6     	Y=0
+        jsr     MASKCHAR1      ; F6E9 20 15 F7  	move baseline up 2px
+        jsr     MASKCHAR1      ; F6EC 20 15 F7  	
+        sty     L00FA          ; F6EF 84 FA     	Y=0, $FA=0
+DISPLAYCHAR
+        jsr     CHARTOBITMAP   ; F6F1 20 49 F7 		
+        jsr     MASKCHAR1      ; F6F4 20 15 F7 		baseline up 1px, X=3 or x=0, F5=masked/shifted byte FA+1
+        lda     L00FA          ; F6F7 A5 FA    		FA loop done 8 times?
+        cmp     #$07           ; F6F9 C9 07    		
+        bmi     DISPLAYCHAR    ; F6FB 30 F4    		
+        bit     L00F4          ; F6FD 24 F4    		(character first byte)
+        bpl     LF70B          ; F6FF 10 0A    		if no descender
+        sty     L00F5          ; F701 84 F5    		Y=0
+        sty     L00F6          ; F703 84 F6    		F5,F6=0
+        jsr     MASKCHAR1      ; F705 20 15 F7 		move baseline up 2px
+        jsr     MASKCHAR1      ; F708 20 15 F7 		
+LF70B:  jsr     DO TAB         ; F70B 20 2F F6 		
+        ldy     YTMP1          ; F70E AC 4A BF 		retrieve X and Y
+        ldx     XTMP1          ; F711 AE 49 BF 		
+        rts                    ; F714 60       		return 
+
+MASKCHAR1:
+        ldy     #$00           ; F715 A0 00          Y=0
+        ldx     L00FD          ; F717 A6 FD          X=? (loop counter 0-7)
+        lda     MASK1,x        ; F719 BD 39 F7       0=00000011
+        and     (SCRNLO),y     ; F71C 31 FB          clear non-masked bits
+        ora     L00F5          ; F71E 05 F5          add bits from F6E5/F701 = 0?
+        sta     (SCRNLO),y     ; F720 91 FB          store on screen,0?
+        lda     MASK2,x        ; F722 BD 41 F7       0=11111111
+        iny                    ; F725 C8             Y=1
+        and     (SCRNLO),y     ; F726 31 FB          clear non-masked bits
+        ora     L00F6          ; F728 05 F6          add bits from F6E5/F701 = 0?
+        sta     (SCRNLO),y     ; F72A 91 FB          store on screen,1?
+        lda     SCRNLO         ; F72C A5 FB          screen address up 1 px line
+        sec                    ; F72E 38             
+        sbc     #$28           ; F72F E9 28          
+        sta     SCRNLO         ; F731 85 FB          
+        bcs     LF737          ; F733 B0 02          
+        dec     SCRNHI         ; F735 C6 FC          
+LF737:  dey                    ; F737 88             Y=0
+        rts                    ; F738 60             returns with Y=0, A=SCRNLO-40, X=$FD
+
+CHARTOBITMAP:					A=char byte
+        ldx     #$00           X = 0
+        stx     L00F6          clear display byte
+        ldy     L00FA          loop counter 0 to 7
+        cpy     #$05           compare to 5
+        bpl     LF775          Y >= 5 --> F775 (already did 5 bytes) 
+        lda     (SRC-LO),y     byte 0-4 of char
+        and     #$1F           ...xxxxx = gets last 5 bits	 A=last 5 bits of char byte 			
+LF757:  ldx     L00FD          $Fd = 0 to 8
+        cpx     #$03           compare with 3
+        beq     LF768          if FD == 3 -> $F768
+        bmi     LF76D          < 3 --> f76d - FD 0,1,2
+        dex                    FD > 3, then x - 3
+        dex                    
+        dex                    X=1-5?
+LF762:  lsr     a              lo bit into carry from last 5 bits of char byte 
+        ror     L00F6          carry into high bit F6 display byte
+        dex                    x - 1
+        bne     LF762          LOOP until x = 0 (5 times?)	
+LF768:  sta     L00F5          $F5 = masked/shifted byte?
+        inc     L00FA          Ycounter + 1
+        rts                    return with X=3 or x=0 -> F6F4
+
+								jump here if FD=0,1,2								
+LF76D:  asl     a              ;  shift A left
+        cpx     #$02           ;  i assume we need to do this 2x or 3x
+        beq     LF768          ;  A shifted 3x, X=2
+        inx                    ;  otherwise increment X
+        bne     LF76D          ;  loop if x!=2 
+
+; did 5 bytes. or 6?
+LF775:  lda     #$01           ;	A = 1 <-- byte 2 of bitmap
+        cpy     #$05           ;	compare Y to 5  
+        beq     LF77D          ;	if Y == 5 skip over  
+        lda     #$03           ;	set A = 3  <-- byte 1 of bitmap
+
+LF77D:  tay                    ;	Y = (1 or 3)  										$F7
+        lda     ($F1),y        ;	load byte from ($F2 $F1) + 1 / + 3		X..X...X  
+        lsr     a              ;											.X..X... 
+        lsr     a              ;											..X..X..  
+        lsr     a              ;	move three bits right					...X..X.	  
+        and     #$1C           ;	keep only ...XXX.. bits					---X..--  
+        sta     $F7            ;	store at F7											...X....  	
+        iny                    ;	Y = (2 or 4)   
+        lda     ($F1),y        ;	load byte from ($F2 $F1) + 2 / + 4		.X.X...X  
+        rol     a              ;		rotate left three times				X.X...X. 
+        rol     a              ;		first two bits are					.X...X..
+        rol     a              ;		 in last 2 positions now			X...X..X
+        and     #$03           ;	keep only ......XX bits					------.X
+        ora     $F7            ;	put those into $F7									...X...X   
+        jmp     LF757          ; 	loop on X=FD
+
+
+
+
+
+
+Set screen memory location?
+
+1634 -> SCRNLO FB
+1635 -> SCRNHI FC
+
+F5D2
+adds 400 to screen address, puts in f1,f2 
+400 = 10x40x1byte chars = 1 text line
+
+add $90 to SCRNLO -> F1		lo addr + 144		00	90
+add $01 to SCRNHI -> F2		hi addr + 1			60	61		
+
+40 bytes= $28 = 1 line of pixels.
+
+
+f1=source
+
+
+6530-002 ROM 
+$FE=CHAR
+
+983  1E9E  A9 20     OUTSP   LDA   #$20
+ 984  1EA0  85 FE     OUTCH   STA   CHAR
+ 985  1EA2  86 FD             STX   TMPX
+ 986  1EA4  20 D4 1E          JSR   DELAY     10/11 BIT CODE SYNC
+ 987  1EA7  AD 42 17          LDA   SBD       START BIT
+ 988  1EAA  29 FE             AND   #$FE
+ 989  1EAC  8D 42 17          STA   SBD
+ 990  1EAF  20 D4 1E          JSR   DELAY
+ 991  1EB2  A2 08             LDX   #$08 
+ 992  1EB4  AD 42 17  OUT1    LDA   SBD       DATA BIT
+ 993  1EB7  29 FE             AND   #$FE 
+ 994  1EB9  46 FE             LSR   CHAR
+
 
 
 
@@ -864,6 +1188,15 @@ T2 = pointer to input buffer?
 LF3A8 increments through buffer, looks for commands, spaces?
 
 
+CMP sets flags as if a subtraction had been carried out. 
+If the value in A/X/Y is equal or greater than the compared value, the Carry will be set. 
+The equal (Z) and negative (N) flags will be set based on equality or lack thereof and the sign (i.e. A>=$80) of the result.
+
+Result		N	Z	C
+A < Memory	1	0	0
+A = Memory	0	1	1
+A > Memory	0	0	1
+The N flag will be bit 7 of A - Memory
 
 
 BIT: The S and V flags are set to match bits 7 and 6 respectively in the value stored at the tested address.
@@ -876,6 +1209,17 @@ if bit 6 is 1, BIT->BVS
 if bit 6 is 0, BIT->BVC
 
 
+
+
+
+UNO:  jsr     DOS          ; F3B8 20 BB F3                        
+DOS:  jsr     TRE          ; F3BB 20 BE F3                        
+TRE:  asl     progStartLo,x  ; F3BE 16 00                         
+        rol     progStartHi,x  ; F3C0 36 01                       
+        bcc     RTS3           ; F3C2 90 03                       
+        jmp     (JUMP TABLE+$0E); F3C4 6C 0E 16                   
+RTS3:   rts                    ; F3C7 60                          
+		
 
 
 
